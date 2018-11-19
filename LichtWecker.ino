@@ -9,13 +9,15 @@
 #include <Adafruit_NeoPixel.h>
 
 // an welchem PIN hängt die Lichterkette
-#define PIN 6
+//#define PIN 6
+#define PIN 14 // Sonoff GPIO 14
+
 // Meine LED-Kette ist 1m mit 30 LEDs
-#define NUM_LEDS 30
-#define LAENGE 1.0          // [m] Länge des LED-Strips
-#define GESCHWINDIGKEIT 0.2 // [m/s] Ausbreitungsgeschwindigkeit v 
-#define DAUER 20.0          // [s] wie lange dauert der "Sonnenaufgang"
-#define NACHLEUCHTEN 2.0    // [s] wie lange bleibt das Licht nach dem "Sonnenaufgang" an
+#define NUM_LEDS 60
+#define LAENGE 1.0f          // [m] Länge des LED-Strips
+#define GESCHWINDIGKEIT 0.2f // [m/s] Ausbreitungsgeschwindigkeit v 
+#define DAUER 20.0f          // [s] wie lange dauert der "Sonnenaufgang"
+#define NACHLEUCHTEN 2.0f    // [s] wie lange bleibt das Licht nach dem "Sonnenaufgang" an
 
 Adafruit_NeoPixel __strip = Adafruit_NeoPixel(NUM_LEDS, PIN, NEO_GRB + NEO_KHZ800);
 
@@ -25,9 +27,9 @@ void HSV_to_RGB(float h, float s, float v, uint8_t *r, uint8_t *g, uint8_t *b)
   int i;
   float f, p, q, t;
 
-  h = max(0.0, min(360.0, h));
-  s = max(0.0, min(1.0, s));
-  v = max(0.0, min(1.0, v));
+  h = max(0.0f, min(360.0f, h));
+  s = max(0.0f, min(1.0f, s));
+  v = max(0.0f, min(1.0f, v));
 
   if (s == 0) {
     // Achromatic (grey)
@@ -82,9 +84,9 @@ uint32_t Lichtfarbe(float t, float x) {
   //  ___/
   //
   // x ausserhalb der Wert macht keine Sinn
-  float _x = max(0, min(LAENGE, x));
+  float _x = max(0.0f, min(LAENGE, x));
   float _t_x = t - _x / GESCHWINDIGKEIT;
-  _t_x = max(0, min(DAUER, _t_x));
+  _t_x = max(0.0f, min(DAUER, _t_x));
   _t_x /= DAUER;
 
   float _h;
