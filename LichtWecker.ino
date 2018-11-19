@@ -49,10 +49,11 @@ void handleRoot() {
 <input type='number' name='Stunde' min='0' max='23' value='%d'>\
 <input type='number' name='Minute'  min='0' max='59' value='%02d'>\
 <input type='number' name='Sekunde' min='0' max='59' value='%02d'>\
+<input type='checkbox' name='An' %s><label for='An'>An</label>\
 <input type='submit' name='ok' value='ok'></form>\
 <form action='/StartStop' method='POST'>Jetzt testen<input type='submit' name='Schalten' value='%s'></form>\
 </html>",
-           hour(t), minute(t), second(t), __Weckzeit._h, __Weckzeit._m, __Weckzeit._s, __SA.Laeuft() ? "stop" : "start"
+           hour(t), minute(t), second(t), __Weckzeit._h, __Weckzeit._m, __Weckzeit._s, __Weckzeit._An ? "checked" : "", __SA.Laeuft() ? "stop" : "start"
           );
   server.send(200, "text/html", temp);
 }
@@ -85,12 +86,15 @@ void handleStartStop() {
 void handleWeckzeit() {
   time_t t = now(); // Store the current time in time
   Serial.printf("Webaufruf /Weckzeit um %2d:%2d:%2d\n", hour(t), minute(t), second(t));
-  if ((server.args() == 4) && (server.argName(0) == "Stunde") && (server.argName(1) == "Minute") && (server.argName(2) == "Sekunde")) {
+  if (((server.args() == 5) && (server.argName(3) == "An") || (server.args() == 4)) &&
+      (server.argName(0) == "Stunde") && (server.argName(1) == "Minute") && (server.argName(2) == "Sekunde")
+     ) {
     __Weckzeit._h = min(23, max(0, int(server.arg(0).toInt())));
     __Weckzeit._m = min(59, max(0, int(server.arg(1).toInt())));
     __Weckzeit._s = min(59, max(0, int(server.arg(2).toInt())));
-    Serial.printf("Neue Weckzeit: %d:%02d:%02d\n", __Weckzeit._h, __Weckzeit._m, __Weckzeit._s);
-    EEPROM.put(0,__Weckzeit);
+    __Weckzeit._An = (server.arg(3) == "on");
+    Serial.printf("Neue Weckzeit: %d:%02d:%02d %s\n", __Weckzeit._h, __Weckzeit._m, __Weckzeit._s, __Weckzeit._An ? "An" : "Aus");
+    EEPROM.put(0, __Weckzeit);
     EEPROM.commit();
     server.sendHeader("Location", "/");
     server.send(303, "text/html", "Location: /");
@@ -234,6 +238,8 @@ void setup() {
   // Schritt 7: EEPROM
   EEPROM.begin(sizeof(WZ_S));
   EEPROM.get(0, __Weckzeit);
+  Serial.printf("_Weckzeit: %d:%02d:%02d \n", __Weckzeit._h, __Weckzeit._m, __Weckzeit._s);
+  Serial.printf("_Weckzeit: (%s)\n", __Weckzeit._An ? "An" : "Aus");
 
   Serial.println("Fertig");
 }
@@ -267,7 +273,7 @@ void loop() {
     __KnopfStatus = false;
   }
 
-  if ((hour(t) == __Weckzeit._h) && (minute(t) == __Weckzeit._m) && (second(t) == __Weckzeit._s)) {
+  if (__Weckzeit._An && (hour(t) == __Weckzeit._h) && (minute(t) == __Weckzeit._m) && (second(t) == __Weckzeit._s)) {
     if (!__SA.Laeuft()) {
       Serial.printf("Weckzeit erreicht, starte Sonnenaufgang um %d:%02d:02d\n", hour(t), minute(t), second(t));
       __SA.Start();

@@ -68,7 +68,10 @@ uint32_t Lichtfarbe(float t, float x) {
   //
   // x ausserhalb der Wert macht keine Sinn
   float _x = max(0.0f, min(LAENGE, x));
-  float _t_x = t - abs(_x-LAENGE/2) / GESCHWINDIGKEIT;
+  float _x_prime = (2.0 * _x - LAENGE) / GESCHWINDIGKEIT;
+  if (_x_prime<0)
+    _x_prime = -_x_prime;
+  float _t_x = t - _x_prime;
   _t_x = max(0.0f, min(DAUER, _t_x));
   _t_x /= DAUER;
 
@@ -87,10 +90,11 @@ uint32_t Lichtfarbe(float t, float x) {
   uint8_t _g;
   uint8_t _b;
   HSV_to_RGB(_h, _s, _v, &_r, &_g, &_b);
-  static float _deb_zeit = 0;
+/*  static float _deb_zeit = 0;
   if (t > _deb_zeit) {
     _deb_zeit = t;
     Serial.print(" t="); Serial.print(t);
+    Serial.print(" x="); Serial.print(x);
     Serial.print(" h/s/v=");
     Serial.print(_h); Serial.print("/");
     Serial.print(_s); Serial.print("/");
@@ -99,7 +103,7 @@ uint32_t Lichtfarbe(float t, float x) {
     Serial.print(_r); Serial.print("/");
     Serial.print(_g); Serial.print("/");
     Serial.print(_b); Serial.println("");
-  }
+  }*/
   return __strip.Color(_r, _g, _b);
 }
 
