@@ -1,3 +1,5 @@
+#include "Sonnenaufgang.h"
+
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
@@ -7,23 +9,13 @@
 #include <Time.h>
 #include <TimeLib.h>
 
+#include <EEPROM.h>
+
 
 // Globale Variablen starten immer mit __[a-z]
 // lokale Variable starten mit _[a-z]
 // Argumente starten mit [a-z]
 
-#include <Adafruit_NeoPixel.h>
-
-// an welchem PIN hängt die Lichterkette
-//#define PIN 6
-#define PIN 14 // Sonoff GPIO 14
-
-// Meine LED-Kette ist 1m mit 30 LEDs
-#define NUM_LEDS 60
-#define LAENGE 1.0f          // [m] Länge des LED-Strips
-#define GESCHWINDIGKEIT 0.2f // [m/s] Ausbreitungsgeschwindigkeit v 
-#define DAUER 20.0f          // [s] wie lange dauert der "Sonnenaufgang"
-#define NACHLEUCHTEN 2.0f    // [s] wie lange bleibt das Licht nach dem "Sonnenaufgang" an
 
 ESP8266WebServer server(80);
 IPAddress timeServer(192, 168, 2, 1); // unsere Fritzbox
@@ -34,177 +26,35 @@ unsigned int localPort = 8888;  // local port to listen for UDP packets
 const char* ssid = "0024A5C6D897";
 const char* password = "u5rr1xembpu1c";
 
-Adafruit_NeoPixel __strip = Adafruit_NeoPixel(NUM_LEDS, PIN, NEO_GRB + NEO_KHZ800);
+typedef struct WeckZeit_S {
+  uint8_t _h;
+  uint8_t _m;
+  uint8_t _s;
+  bool _An;
+} WZ_S;
 
-// Kudus an hdznrrd au Github (fehlerkorrigiert)
-void HSV_to_RGB(float h, float s, float v, uint8_t *r, uint8_t *g, uint8_t *b)
-{
-  int i;
-  float f, p, q, t;
-
-  h = max(0.0f, min(360.0f, h));
-  s = max(0.0f, min(1.0f, s));
-  v = max(0.0f, min(1.0f, v));
-
-  if (s == 0) {
-    // Achromatic (grey)
-    *r = *g = *b = round(v * 255);
-    return;
-  }
-
-  h /= 60; // sector 0 to 5
-  i = floor(h);
-  f = h - i; // factorial part of h
-  p = v * (1 - s);
-  q = v * (1 - s * f);
-  t = v * (1 - s * (1 - f));
-  switch (i) {
-    case 0:
-      *r = round(255 * v);
-      *g = round(255 * t);
-      *b = round(255 * p);
-      break;
-    case 1:
-      *r = round(255 * q);
-      *g = round(255 * v);
-      *b = round(255 * p);
-      break;
-    case 2:
-      *r = round(255 * p);
-      *g = round(255 * v);
-      *b = round(255 * t);
-      break;
-    case 3:
-      *r = round(255 * p);
-      *g = round(255 * q);
-      *b = round(255 * v);
-      break;
-    case 4:
-      *r = round(255 * t);
-      *g = round(255 * p);
-      *b = round(255 * v);
-      break;
-    default: // case 5:
-      *r = round(255 * v);
-      *g = round(255 * p);
-      *b = round(255 * q);
-  }
-}
-
-uint32_t Lichtfarbe(float t, float x) {
-  // Kurvenverlauf für Lichtfarbe(t-x/v):
-  //        ____
-  //       /
-  //      /
-  //  ___/
-  //
-  // x ausserhalb der Wert macht keine Sinn
-  float _x = max(0.0f, min(LAENGE, x));
-  float _t_x = t - _x / GESCHWINDIGKEIT;
-  _t_x = max(0.0f, min(DAUER, _t_x));
-  _t_x /= DAUER;
-
-  float _h;
-  if (_t_x < 0.9)
-    _h = 10. +  _t_x * 50. ;
-  else
-    _h = -1610. +  _t_x * 1850. ;
-  float _s;
-  if (_t_x < 0.9)
-    _s = 1. - _t_x / 2. ;
-  else
-    _s = 0.55 + 4 * 0.9 - _t_x * 4;
-  float _v = _t_x ;
-  uint8_t _r;
-  uint8_t _g;
-  uint8_t _b;
-  HSV_to_RGB(_h, _s, _v, &_r, &_g, &_b);
-  static float _deb_zeit = 0;
-  if (t > _deb_zeit) {
-    _deb_zeit = t;
-    Serial.print(" t="); Serial.print(t);
-    Serial.print(" h/s/v=");
-    Serial.print(_h); Serial.print("/");
-    Serial.print(_s); Serial.print("/");
-    Serial.print(_v);
-    Serial.print(" r/g/b=");
-    Serial.print(_r); Serial.print("/");
-    Serial.print(_g); Serial.print("/");
-    Serial.print(_b); Serial.println("");
-  }
-  return __strip.Color(_r, _g, _b);
-
-}
-
-class Sonnenaufgang {
-  public:
-    Sonnenaufgang(float dauer = DAUER, float nachleuchten = NACHLEUCHTEN) {
-      _Nachlaufzeit = round(nachleuchten * 1000);
-      _Dauer = round(dauer * 1000);
-    }
-
-    void Start() {
-      // Start merkt sich die Startzeit (jetzt).
-      // Wenn Startzeit > 0 ist, läuft ein Sonnenaufgang
-      // Sollte ein Sonnenaufgang bereits laufen --> von neuem anfangen
-      _Startzeit = millis();
-      digitalWrite(LED_BUILTIN, LOW); // bei Sonoff Basic HIGH = OFF
-      Serial.printf("Starte Sonnenaufgang bei %d\n", _Startzeit);
-      Serial.printf("Dauer %d Nachlaufzeit %d\n", _Dauer, _Nachlaufzeit);
-    }
-
-    void Stop() {
-      Serial.printf("Stoppe Sonnenaufgang bei %d (nach %d)\n", millis(), millis() - _Startzeit);
-      // Stop löscht das Licht und setzt _Startzeit wieder auf 0
-      for (uint16_t _n = 0; _n < __strip.numPixels(); _n++) {
-        __strip.setPixelColor(_n, 0);
-      }
-      __strip.show();
-      _Startzeit = 0;
-      digitalWrite(LED_BUILTIN, HIGH); // bei Sonoff Basic HIGH = OFF
-    }
-
-    bool Laeuft() {
-      return _Startzeit > 0;
-    }
-
-    void Tick() {
-      // Sollte ein Sonnenaufgang laufen, das Licht entsprechend anpassen..
-      if (_Startzeit > 0) {
-        if (millis() > _Startzeit + _Dauer + _Nachlaufzeit) {
-          Stop();
-        } else {
-          for (uint16_t _n = 0; _n < __strip.numPixels(); _n++) {
-            float _x = (float)_n * LAENGE / __strip.numPixels();
-            __strip.setPixelColor(_n, Lichtfarbe(_ms / 1000., _x));
-          }
-          __strip.show();
-        }
-      }
-    }
-  private:
-    long _Startzeit;    // [ms] - läuft, bzw. seit wann läuft ein S.A.
-    long _Nachlaufzeit; // [ms] - wie lange bleibt das Licht nach der Dauer des Sonnenuntergangs an?
-    long _Dauer;        // [ms] - wie lange dauert es, bis bei einem S.A. das Licht auf MAX ist
-};
+WZ_S __Weckzeit;
 
 Sonnenaufgang __SA;
 
 void handleRoot() {
   char temp[600];
   time_t t = now(); // Store the current time in time
-  Serial.printf("Webaufruf / um %2d:%2d:%2d\n", hour(t), minute(t), second(t));
-
-  snprintf(temp, 600,
-           "<html><head><meta http-equiv='refresh' content='5'/><title>ESP8266 Demo</title><style>body{background-color: #cccccc; Color: #000088; }</style></head>\
-<body><h1>Lichtwecker </h1><p>Zeit: %02d:%02d:%02d</p>\n\
-<form action='/StartStop' method='POST'>%s<input type='submit' name='Schalten' value='%s'></form>\
+  Serial.printf("Webaufruf / um %2d:%02d:%02d\n", hour(t), minute(t), second(t));
+  //<style>body{background-color: #cccccc; Color: #000088; }</style>
+  snprintf(temp, 700,
+           "<html><head><meta http-equiv='refresh' content='5'/><title>Lichtwecker</title></head>\
+<body><h1>Lichtwecker</h1><p>Zeit: %02d:%02d:%02d</p>\n\
+<form action='/Weckzeit' method='POST'>Weckzeit\
+<input type='number' name='Stunde' min='0' max='23' value='%d'>\
+<input type='number' name='Minute'  min='0' max='59' value='%02d'>\
+<input type='number' name='Sekunde' min='0' max='59' value='%02d'>\
+<input type='submit' name='ok' value='ok'></form>\
+<form action='/StartStop' method='POST'>Jetzt testen<input type='submit' name='Schalten' value='%s'></form>\
 </html>",
-           hour(t), minute(t), second(t), __SA.Laeuft() ? "stop" : "start", __SA.Laeuft() ? "stop" : "start"
+           hour(t), minute(t), second(t), __Weckzeit._h, __Weckzeit._m, __Weckzeit._s, __SA.Laeuft() ? "stop" : "start"
           );
-  Serial.print(" Msg fertig");
   server.send(200, "text/html", temp);
-  Serial.println(" und gesendet");
 }
 
 void handleStartStop() {
@@ -230,6 +80,29 @@ void handleStartStop() {
     }
     server.send(400, "text/plain", message);
   }
+}
+
+void handleWeckzeit() {
+  time_t t = now(); // Store the current time in time
+  Serial.printf("Webaufruf /Weckzeit um %2d:%2d:%2d\n", hour(t), minute(t), second(t));
+  if ((server.args() == 4) && (server.argName(0) == "Stunde") && (server.argName(1) == "Minute") && (server.argName(2) == "Sekunde")) {
+    __Weckzeit._h = min(23, max(0, int(server.arg(0).toInt())));
+    __Weckzeit._m = min(59, max(0, int(server.arg(1).toInt())));
+    __Weckzeit._s = min(59, max(0, int(server.arg(2).toInt())));
+    Serial.printf("Neue Weckzeit: %d:%02d:%02d\n", __Weckzeit._h, __Weckzeit._m, __Weckzeit._s);
+    EEPROM.put(0,__Weckzeit);
+    EEPROM.commit();
+    server.sendHeader("Location", "/");
+    server.send(303, "text/html", "Location: /");
+  } else {
+    Serial.printf("Fehler in Args\n");
+    String message = "Fehler in den Args\n\n";
+    for (uint8_t i = 0; i < server.args(); i++) {
+      message += " " + server.argName(i) + ": " + server.arg(i) + "\n";
+    }
+    server.send(400, "text/plain", message);
+  }
+
 }
 
 void handleFavIcon() {
@@ -299,12 +172,13 @@ void sendNTPpacket(IPAddress &address)
   packetBuffer[14]  = 49;
   packetBuffer[15]  = 52;
   // all NTP fields have been given values, now
-  // you can send a packet requesting a timestamp:                 
+  // you can send a packet requesting a timestamp:
   Udp.beginPacket(address, 123); //NTP requests are to port 123
   Udp.write(packetBuffer, NTP_PACKET_SIZE);
   Udp.endPacket();
 }
 
+bool __KnopfStatus;
 
 void setup() {
   // Schritt 0: Seriellen Output enablen
@@ -317,10 +191,7 @@ void setup() {
   Serial.print(" interneLED");
 
   // Schritt 3: die LED-Kette
-  __strip.begin();
-  __strip.setBrightness(255);
-  __strip.show(); // Initialiere alle auf "Aus"
-
+  __SA.Beginn();
   Serial.println(" LED-Kette");
 
   // Schritt 4: Wifi
@@ -340,7 +211,8 @@ void setup() {
   // Schritt 5: Webserver konfigurieren
   server.on("/", handleRoot);
   server.on("/StartStop", handleStartStop);
-  server.on("/favicon.ico",handleFavIcon);
+  server.on("/Weckzeit", handleWeckzeit);
+  server.on("/favicon.ico", handleFavIcon);
   server.onNotFound(handleNotFound);
   server.begin();
   Serial.println(" Webserver laeuft");
@@ -350,22 +222,56 @@ void setup() {
   setSyncProvider(getNtpTime);
   Serial.println(" Ntp-Service gestartet\n");
 
-    Serial.println("Fertig");
+  // Schritt 6: Wert vom Knopf setzen
+  pinMode(0, INPUT);
+  __KnopfStatus = (digitalRead(0) == LOW);
+  if (__KnopfStatus) {
+    Serial.println("Knopf gedrückt");
+  } else {
+    Serial.println("Knopf nicht gedrückt");
+  }
+
+  // Schritt 7: EEPROM
+  EEPROM.begin(sizeof(WZ_S));
+  EEPROM.get(0, __Weckzeit);
+
+  Serial.println("Fertig");
 }
 
 void loop() {
+  time_t t = now(); // Store the current time in time
   if (Serial.available() > 0) {
     // read the incoming byte:
     char _c  = Serial.read();
-    Serial.print("Starte Sonnenaufgang: ");
-    Serial.println(_c, DEC);
-    time_t t = now(); // Store the current time in time
-    Serial.print(hour(t));
-    Serial.print(":");
-    Serial.print(minute(t));
-    Serial.print(":");
-    Serial.print(second(t));
-    __SA.Start();
+    if (__SA.Laeuft()) {
+      Serial.printf("Stoppe Sonnenaufgang um %d:%02d:02d\n", hour(t), minute(t), second(t));
+      __SA.Start();
+    } else {
+      Serial.printf("Starte Sonnenaufgang um %d:%02d:02d\n", hour(t), minute(t), second(t));
+      __SA.Start();
+    }
+  }
+  bool _knopf = (digitalRead(0) == LOW);
+  if (_knopf) { // Knopf gedrueckt
+    if (!__KnopfStatus) { // vorher nicht gedrueckt --> tue was
+      if (__SA.Laeuft()) {
+        Serial.printf("Stoppe Sonnenaufgang um %d:%02d:02d\n", hour(t), minute(t), second(t));
+        __SA.Stop();
+      } else {
+        Serial.printf("Starte Sonnenaufgang um %d:%02d:02d\n", hour(t), minute(t), second(t));
+        __SA.Start();
+      }
+      __KnopfStatus = true;
+    }
+  } else { // Knopf nicht gedrueckt, vorher immer auf nicht gedrueckt setzen
+    __KnopfStatus = false;
+  }
+
+  if ((hour(t) == __Weckzeit._h) && (minute(t) == __Weckzeit._m) && (second(t) == __Weckzeit._s)) {
+    if (!__SA.Laeuft()) {
+      Serial.printf("Weckzeit erreicht, starte Sonnenaufgang um %d:%02d:02d\n", hour(t), minute(t), second(t));
+      __SA.Start();
+    }
   }
   __SA.Tick();
   server.handleClient();
