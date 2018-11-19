@@ -1,3 +1,9 @@
+#include <ESP8266WiFi.h>
+#include <ESP8266WebServer.h>
+#include <ESP8266mDNS.h>
+#include <WiFiUdp.h>
+
+
 #include <Time.h>
 #include <TimeLib.h>
 
@@ -18,6 +24,15 @@
 #define GESCHWINDIGKEIT 0.2f // [m/s] Ausbreitungsgeschwindigkeit v 
 #define DAUER 20.0f          // [s] wie lange dauert der "Sonnenaufgang"
 #define NACHLEUCHTEN 2.0f    // [s] wie lange bleibt das Licht nach dem "Sonnenaufgang" an
+
+ESP8266WebServer server(80);
+IPAddress timeServer(192, 168, 2, 1); // unsere Fritzbox
+const int timeZone = 1;     // Central European Time
+WiFiUDP Udp;
+unsigned int localPort = 8888;  // local port to listen for UDP packets
+
+const char* ssid = "0024A5C6D897";
+const char* password = "u5rr1xembpu1c";
 
 Adafruit_NeoPixel __strip = Adafruit_NeoPixel(NUM_LEDS, PIN, NEO_GRB + NEO_KHZ800);
 
@@ -105,9 +120,9 @@ uint32_t Lichtfarbe(float t, float x) {
   uint8_t _b;
   HSV_to_RGB(_h, _s, _v, &_r, &_g, &_b);
   static float _deb_zeit = 0;
-  if (_t_x > _deb_zeit) {
-    _deb_zeit = _t_x;
-    Serial.print(" _t_x="); Serial.print(_t_x);
+  if (t > _deb_zeit) {
+    _deb_zeit = t;
+    Serial.print(" t="); Serial.print(t);
     Serial.print(" h/s/v=");
     Serial.print(_h); Serial.print("/");
     Serial.print(_s); Serial.print("/");
@@ -133,22 +148,30 @@ class Sonnenaufgang {
       // Wenn Startzeit > 0 ist, läuft ein Sonnenaufgang
       // Sollte ein Sonnenaufgang bereits laufen --> von neuem anfangen
       _Startzeit = millis();
+      digitalWrite(LED_BUILTIN, LOW); // bei Sonoff Basic HIGH = OFF
+      Serial.printf("Starte Sonnenaufgang bei %d\n", _Startzeit);
+      Serial.printf("Dauer %d Nachlaufzeit %d\n", _Dauer, _Nachlaufzeit);
     }
 
     void Stop() {
+      Serial.printf("Stoppe Sonnenaufgang bei %d (nach %d)\n", millis(), millis() - _Startzeit);
       // Stop löscht das Licht und setzt _Startzeit wieder auf 0
       for (uint16_t _n = 0; _n < __strip.numPixels(); _n++) {
         __strip.setPixelColor(_n, 0);
       }
       __strip.show();
       _Startzeit = 0;
+      digitalWrite(LED_BUILTIN, HIGH); // bei Sonoff Basic HIGH = OFF
+    }
+
+    bool Laeuft() {
+      return _Startzeit > 0;
     }
 
     void Tick() {
       // Sollte ein Sonnenaufgang laufen, das Licht entsprechend anpassen..
       if (_Startzeit > 0) {
-        long _ms = millis() - _Startzeit;
-        if (_ms > _Startzeit + _Dauer + _Nachlaufzeit) {
+        if (millis() > _Startzeit + _Dauer + _Nachlaufzeit) {
           Stop();
         } else {
           for (uint16_t _n = 0; _n < __strip.numPixels(); _n++) {
@@ -165,17 +188,170 @@ class Sonnenaufgang {
     long _Dauer;        // [ms] - wie lange dauert es, bis bei einem S.A. das Licht auf MAX ist
 };
 
+Sonnenaufgang __SA;
+
+void handleRoot() {
+  char temp[600];
+  time_t t = now(); // Store the current time in time
+  Serial.printf("Webaufruf / um %2d:%2d:%2d\n", hour(t), minute(t), second(t));
+
+  snprintf(temp, 600,
+           "<html><head><meta http-equiv='refresh' content='5'/><title>ESP8266 Demo</title><style>body{background-color: #cccccc; Color: #000088; }</style></head>\
+<body><h1>Lichtwecker </h1><p>Zeit: %02d:%02d:%02d</p>\n\
+<form action='/StartStop' method='POST'>%s<input type='submit' name='Schalten' value='%s'></form>\
+</html>",
+           hour(t), minute(t), second(t), __SA.Laeuft() ? "stop" : "start", __SA.Laeuft() ? "stop" : "start"
+          );
+  Serial.print(" Msg fertig");
+  server.send(200, "text/html", temp);
+  Serial.println(" und gesendet");
+}
+
+void handleStartStop() {
+  time_t t = now(); // Store the current time in time
+  Serial.printf("Webaufruf /StartStop um %2d:%2d:%2d\n", hour(t), minute(t), second(t));
+  if ((server.args() == 1) && (server.argName(0) == "Schalten")) {
+    if (server.arg(0) == "start") {
+      Serial.printf("Starte Sonnenaufgang\n");
+      __SA.Start();
+      server.sendHeader("Location", "/");
+      server.send(303, "text/html", "Location: /");
+    } else {
+      Serial.printf("Stoppe Sonnenaufgang\n");
+      __SA.Stop();
+      server.sendHeader("Location", "/");
+      server.send(303, "text/html", "Location: /");
+    }
+  } else {
+    Serial.printf("Fehler in Args\n");
+    String message = "Fehler in den Args\n\n";
+    for (uint8_t i = 0; i < server.args(); i++) {
+      message += " " + server.argName(i) + ": " + server.arg(i) + "\n";
+    }
+    server.send(400, "text/plain", message);
+  }
+}
+
+void handleFavIcon() {
+  server.send(404, "text/plain", "no favicon");
+}
+
+void handleNotFound() {
+  time_t t = now(); // Store the current time in time
+  Serial.printf("Webaufruf -unbekannte Seite %s um %2d:%2d:%2d\n", server.uri().c_str(), hour(t), minute(t), second(t));
+  String message = "File Not Found\n\n";
+  message += "URI: ";
+  message += server.uri();
+  message += "\nMethod: ";
+  message += (server.method() == HTTP_GET) ? "GET" : "POST";
+  message += "\nArguments: ";
+  message += server.args();
+  message += "\n";
+  for (uint8_t i = 0; i < server.args(); i++) {
+    message += " " + server.argName(i) + ": " + server.arg(i) + "\n";
+  }
+  server.send(404, "text/plain", message);
+}
+
+/*-------- NTP code ----------*/
+
+const int NTP_PACKET_SIZE = 48; // NTP time is in the first 48 bytes of message
+byte packetBuffer[NTP_PACKET_SIZE]; //buffer to hold incoming & outgoing packets
+
+time_t getNtpTime()
+{
+  while (Udp.parsePacket() > 0) ; // discard any previously received packets
+  Serial.println("Transmit NTP Request");
+  sendNTPpacket(timeServer);
+  uint32_t beginWait = millis();
+  while (millis() - beginWait < 1500) {
+    int size = Udp.parsePacket();
+    if (size >= NTP_PACKET_SIZE) {
+      Serial.println("Receive NTP Response");
+      Udp.read(packetBuffer, NTP_PACKET_SIZE);  // read packet into the buffer
+      unsigned long secsSince1900;
+      // convert four bytes starting at location 40 to a long integer
+      secsSince1900 =  (unsigned long)packetBuffer[40] << 24;
+      secsSince1900 |= (unsigned long)packetBuffer[41] << 16;
+      secsSince1900 |= (unsigned long)packetBuffer[42] << 8;
+      secsSince1900 |= (unsigned long)packetBuffer[43];
+      return secsSince1900 - 2208988800UL + timeZone * SECS_PER_HOUR;
+    }
+  }
+  Serial.println("No NTP Response :-(");
+  return 0; // return 0 if unable to get the time
+}
+
+// send an NTP request to the time server at the given address
+void sendNTPpacket(IPAddress &address)
+{
+  // set all bytes in the buffer to 0
+  memset(packetBuffer, 0, NTP_PACKET_SIZE);
+  // Initialize values needed to form NTP request
+  // (see URL above for details on the packets)
+  packetBuffer[0] = 0b11100011;   // LI, Version, Mode
+  packetBuffer[1] = 0;     // Stratum, or type of clock
+  packetBuffer[2] = 6;     // Polling Interval
+  packetBuffer[3] = 0xEC;  // Peer Clock Precision
+  // 8 bytes of zero for Root Delay & Root Dispersion
+  packetBuffer[12]  = 49;
+  packetBuffer[13]  = 0x4E;
+  packetBuffer[14]  = 49;
+  packetBuffer[15]  = 52;
+  // all NTP fields have been given values, now
+  // you can send a packet requesting a timestamp:                 
+  Udp.beginPacket(address, 123); //NTP requests are to port 123
+  Udp.write(packetBuffer, NTP_PACKET_SIZE);
+  Udp.endPacket();
+}
+
+
 void setup() {
+  // Schritt 0: Seriellen Output enablen
   Serial.begin(115200);
   Serial.print("Starte...");
 
+  // Schritt 1: die interne LED konfigurieren
+  pinMode(LED_BUILTIN, OUTPUT);// bei Sonoff Basic Pin 13
+  digitalWrite(LED_BUILTIN, HIGH); // bei Sonoff Basic HIGH = OFF
+  Serial.print(" interneLED");
+
+  // Schritt 3: die LED-Kette
   __strip.begin();
   __strip.setBrightness(255);
   __strip.show(); // Initialiere alle auf "Aus"
-  Serial.println(" ok");
-}
 
-Sonnenaufgang __SA;
+  Serial.println(" LED-Kette");
+
+  // Schritt 4: Wifi
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+  while (WiFi.waitForConnectResult() != WL_CONNECTED) {
+    Serial.println("Keine Wifi-Verbingung! Neustart in 5 Sekunden...");
+    delay(5000);
+    ESP.restart();
+  }
+  Serial.printf(" Wifi %s (IP Address %s)", ssid, WiFi.localIP().toString().c_str());
+
+  if (MDNS.begin("esp8266")) {
+    Serial.print(" MDNS responder");
+  }
+
+  // Schritt 5: Webserver konfigurieren
+  server.on("/", handleRoot);
+  server.on("/StartStop", handleStartStop);
+  server.on("/favicon.ico",handleFavIcon);
+  server.onNotFound(handleNotFound);
+  server.begin();
+  Serial.println(" Webserver laeuft");
+
+  // Schritt 6: Zeitserver konfigurieren und starten
+  Udp.begin(localPort);
+  setSyncProvider(getNtpTime);
+  Serial.println(" Ntp-Service gestartet\n");
+
+    Serial.println("Fertig");
+}
 
 void loop() {
   if (Serial.available() > 0) {
@@ -192,15 +368,7 @@ void loop() {
     __SA.Start();
   }
   __SA.Tick();
-  /*  float _t_l =  (millis() % int(DAUER * 1000 * 2));
-    Serial.print(" millis%=");  Serial.print (_t_l);
-    _t_l -= DAUER * 1000 / 2;
-    Serial.print(" _t_l=");  Serial.println(_t_l / 1000);
-    for (uint16_t _n = 0; _n < __strip.numPixels(); _n++) {
-      float _x = (float)_n * LAENGE / __strip.numPixels();
-      __strip.setPixelColor(_n, Lichtfarbe(_t_l / 1000., _x));
-    }
-    __strip.show();*/
+  server.handleClient();
   delay(20);
 }
 
