@@ -69,7 +69,7 @@ uint32_t Lichtfarbe(float t, float x) {
   // x ausserhalb der Wert macht keine Sinn
   float _x = max(0.0f, min(LAENGE, x));
   float _x_prime = (2.0 * _x - LAENGE) / GESCHWINDIGKEIT;
-  if (_x_prime<0)
+  if (_x_prime < 0)
     _x_prime = -_x_prime;
   float _t_x = t - _x_prime;
   _t_x = max(0.0f, min(DAUER, _t_x));
@@ -90,26 +90,24 @@ uint32_t Lichtfarbe(float t, float x) {
   uint8_t _g;
   uint8_t _b;
   HSV_to_RGB(_h, _s, _v, &_r, &_g, &_b);
-/*  static float _deb_zeit = 0;
-  if (t > _deb_zeit) {
-    _deb_zeit = t;
-    Serial.print(" t="); Serial.print(t);
-    Serial.print(" x="); Serial.print(x);
-    Serial.print(" h/s/v=");
-    Serial.print(_h); Serial.print("/");
-    Serial.print(_s); Serial.print("/");
-    Serial.print(_v);
-    Serial.print(" r/g/b=");
-    Serial.print(_r); Serial.print("/");
-    Serial.print(_g); Serial.print("/");
-    Serial.print(_b); Serial.println("");
-  }*/
+  /*  static float _deb_zeit = 0;
+    if (t > _deb_zeit) {
+      _deb_zeit = t;
+      Serial.print(" t="); Serial.print(t);
+      Serial.print(" x="); Serial.print(x);
+      Serial.print(" h/s/v=");
+      Serial.print(_h); Serial.print("/");
+      Serial.print(_s); Serial.print("/");
+      Serial.print(_v);
+      Serial.print(" r/g/b=");
+      Serial.print(_r); Serial.print("/");
+      Serial.print(_g); Serial.print("/");
+      Serial.print(_b); Serial.println("");
+    }*/
   return __strip.Color(_r, _g, _b);
 }
 
-Sonnenaufgang::Sonnenaufgang(float dauer, float nachleuchten) {
-  _Nachlaufzeit = round(nachleuchten * 1000);
-  _Dauer = round(dauer * 1000);
+Sonnenaufgang::Sonnenaufgang() {
 }
 
 void Sonnenaufgang::Beginn() {
@@ -122,9 +120,19 @@ void Sonnenaufgang::Start() {
   // Start merkt sich die Startzeit (jetzt).
   // Wenn Startzeit > 0 ist, läuft ein Sonnenaufgang
   // Sollte ein Sonnenaufgang bereits laufen --> von neuem anfangen
+  _Nachlaufzeit = round(NACHLEUCHTEN * 1000);
+  _Dauer = round(DAUER * 1000);
+  _Modus = aufgang;
   _Startzeit = millis();
   digitalWrite(LED_BUILTIN, LOW); // bei Sonoff Basic HIGH = OFF
   Serial.printf("Starte Sonnenaufgang bei %d, Dauer %d Nachlaufzeit %d\n", _Startzeit, _Dauer, _Nachlaufzeit);
+}
+
+bool Sonnenaufgang::Snooze() {
+  if (_Startzeit == 0)
+    return false; // es läuft kein Aufgang, als kein Snooze..
+  _Startzeit = millis()+ round(SNOOZE*1000);
+  return true;
 }
 
 void Sonnenaufgang::Stop() {
@@ -138,6 +146,15 @@ void Sonnenaufgang::Stop() {
   digitalWrite(LED_BUILTIN, HIGH); // bei Sonoff Basic HIGH = OFF
 }
 
+void Sonnenaufgang::Nachricht(Farb_t farbe) {
+  _Nachlaufzeit = 0;
+  _Dauer = round(BLINKDAUER * 1000);
+  _Modus = nachricht;
+  _Startzeit = millis();
+  _Farbe = farbe;
+  digitalWrite(LED_BUILTIN, LOW); // bei Sonoff Basic HIGH = OFF
+  Serial.printf("Starte Nachricht bei %d, Dauer %d, Farbe #%d\n", _Startzeit, _Dauer, _Farbe);
+}
 bool Sonnenaufgang::Laeuft() {
   return _Startzeit > 0;
 }
@@ -149,11 +166,45 @@ void Sonnenaufgang::Tick() {
     if ( _ms > _Dauer + _Nachlaufzeit) {
       Stop();
     } else {
-      for (uint16_t _n = 0; _n < __strip.numPixels(); _n++) {
-        float _x = (float)_n * LAENGE / __strip.numPixels();
-        __strip.setPixelColor(_n, Lichtfarbe(_ms / 1000., _x));
+      switch (_Modus) {
+        case aufgang:
+          Tick_Aufgang(_ms);
+          break;
+        case nachricht:
+          Tick_Nachricht(_ms);
+          break;
       }
-      __strip.show();
     }
   }
 }
+
+void Sonnenaufgang::Tick_Aufgang(long ms) {
+  for (uint16_t _n = 0; _n < __strip.numPixels(); _n++) {
+    float _x = (float)_n * LAENGE / __strip.numPixels();
+    __strip.setPixelColor(_n, Lichtfarbe(ms / 1000., _x));
+  }
+  __strip.show();
+}
+
+void Sonnenaufgang::Tick_Nachricht(long ms) {
+  uint32_t _f;
+  if (ms < 100) {
+    switch (_Farbe) {
+      case rot:
+        _f = __strip.Color(255, 0, 0);
+        break;
+      case gelb:
+        _f = __strip.Color(255, 255, 0);
+        break;
+      case gruen:
+        _f = __strip.Color(0, 255, 0);
+        break;
+    }
+    for (uint16_t _n = 0; _n < __strip.numPixels(); _n++) {
+      float _x = (float)_n * LAENGE / __strip.numPixels();
+      __strip.setPixelColor(_n, _f);
+    }
+    __strip.show();
+  }
+}
+
