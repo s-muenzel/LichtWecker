@@ -19,42 +19,63 @@ ESP8266WebServer server(80);
 const char* ssid = "0024A5C6D897";
 const char* password = "u5rr1xembpu1c";
 
-/*typedef struct WeckZeit_S {
-  uint8_t _h;
-  uint8_t _m;
-  uint8_t _s;
-  bool _An;
-  } WZ_S;
-
-  WZ_S __Weckzeit;
-*/
 
 Speicher __WZ;
-
 Sonnenaufgang __SA;
 Knopf __Knopf;
 NTP_Helfer __NTP;
 
 void handleRoot() {
-  char temp[1000];
+  char temp[2000];
   time_t t = now(); // Store the current time in time
-  time_t w = __WZ.Weckzeit(0);
-  bool a = __WZ.Wecker_An(0);
+  time_t w[7];
+  bool a[7];
+  for (int i = 0; i < 7; i++) {
+    w[i] = __WZ.Weckzeit(i);
+    a[i] = __WZ.Wecker_An(i);
+  }
   Serial.printf("Webaufruf / um %2d:%02d:%02d\n", hour(t), minute(t), second(t));
-//<meta http-equiv='refresh' content='5'/>
-//iframe width='30em' height='10' 
-snprintf(temp, 1000,
+  /*
+    snprintf(temp, 1000,
+               "<html><head><title>Lichtwecker</title></head>\
+    <body><h1>Lichtwecker</h1><p>Zeit: <iframe src='/LokaleZeit' style='border:none;height:20px;width:100px;' name='LokaleZeit'>%02d:%02d:%02d</iframe></p>\n\
+    <form action='/Weckzeit' method='POST'>Weckzeit\
+    <p>Wecker an<input type='checkbox' name='Aktiv' %s></p>\
+    <p><input type='time' name='Montag' value='12:32'><p><input type='number' name='Stunde' min='0' max='23' value='%d'>\
+    <input type='number' name='Minute'  min='0' max='59' value='%02d'>\
+    <input type='number' name='Sekunde' min='0' max='59' value='%02d'>\
+    <input type='checkbox' name='An' %s><label for='An'>An</label></p>\
+    <input type='submit' name='ok' value='ok'></form>\
+    <form action='/StartStop' method='POST'>Jetzt testen<input type='submit' name='Schalten' value='%s'></form>\
+    </html>",
+               hour(t), minute(t), second(t), __WZ.Wecker_Aktiv() ? "checked" : "", hour(w), minute(w), second(w), a ? "checked" : "", __SA.Laeuft() ? "stop" : "start"
+              );
+  */
+  snprintf(temp, 2000,
            "<html><head><title>Lichtwecker</title></head>\
-<body><h1>Lichtwecker</h1><p>Zeit: <iframe src='/LokaleZeit' seamless name='LokaleZeit'>%02d:%02d:%02d</p>\n\
-<form action='/Weckzeit' method='POST'>Weckzeit\
-<input type='number' name='Stunde' min='0' max='23' value='%d'>\
-<input type='number' name='Minute'  min='0' max='59' value='%02d'>\
-<input type='number' name='Sekunde' min='0' max='59' value='%02d'>\
-<input type='checkbox' name='An' %s><label for='An'>An</label>\
-<input type='submit' name='ok' value='ok'></form>\
+<body><h1>Lichtwecker</h1><p>Zeit: <iframe src='/LokaleZeit' style='border:none;height:26px;width:100px;' name='LokaleZeit'>%2d:%02d:%02d</iframe></p>\n\
+<form action='/Weckzeit' method='POST'><table>\
+<tr><th>Wecker an</th><th></th><th><input type='checkbox' name='Aktiv' %s></th></tr>\
+<tr><td>Montag</td><td><input type='time' name='Mo' value='%02d:%02d'></td><td><input type='checkbox' name='AnMo' %s></td></tr>\
+<tr><td>Dienstag</td><td><input type='time' name='Di' value='%02d:%02d'></td><td><input type='checkbox' name='AnDi' %s></td></tr>\
+<tr><td>Mittwoch</td><td><input type='time' name='Mi' value='%02d:%02d'></td><td><input type='checkbox' name='AnMi' %s></td></tr>\
+<tr><td>Donnerstag</td><td><input type='time' name='Do' value='%02d:%02d'></td><td><input type='checkbox' name='AnDo' %s></td></tr>\
+<tr><td>Freitag</td><td><input type='time' name='Fr' value='%02d:%02d'></td><td><input type='checkbox' name='AnFr' %s></td></tr>\
+<tr><td>Samstag</td><td><input type='time' name='Sa' value='%02d:%02d'></td><td><input type='checkbox' name='AnSa' %s></td></tr>\
+<tr><td>Sonntag</td><td><input type='time' name='So' value='%02d:%02d'></td><td><input type='checkbox' name='AnSo' %s></td></tr>\
+<tr><td></td><td></td><td><input type='submit' name='ok' value='ok'></td></tr></table></form>\
 <form action='/StartStop' method='POST'>Jetzt testen<input type='submit' name='Schalten' value='%s'></form>\
 </html>",
-           hour(t), minute(t), second(t), hour(w), minute(w), second(w), a ? "checked" : "", __SA.Laeuft() ? "stop" : "start"
+           hour(t), minute(t), second(t),
+           __WZ.Wecker_Aktiv() ? "checked" : "",
+           hour(w[2]), minute(w[2]), a[2] ? "checked" : "",
+           hour(w[3]), minute(w[3]), a[3] ? "checked" : "",
+           hour(w[4]), minute(w[4]), a[4] ? "checked" : "",
+           hour(w[5]), minute(w[5]), a[5] ? "checked" : "",
+           hour(w[6]), minute(w[6]), a[6] ? "checked" : "",
+           hour(w[0]), minute(w[0]), a[0] ? "checked" : "",
+           hour(w[1]), minute(w[1]), a[1] ? "checked" : "",
+           __SA.Laeuft() ? "stop" : "start"
           );
   server.send(200, "text/html", temp);
 }
@@ -84,35 +105,96 @@ void handleStartStop() {
   }
 }
 
+uint8_t parseZeit_Stunde(String s) {
+  return min(23, max(0, int(s.toInt())));
+}
+uint8_t parseZeit_Minute(String s) {
+  return min(59, max(0, int(s.substring(3).toInt())));
+}
+
 void handleWeckzeit() {
   time_t t = now(); // Store the current time in time
   Serial.printf("Webaufruf /Weckzeit um %2d:%2d:%2d\n", hour(t), minute(t), second(t));
-  if (((server.args() == 5) && (server.argName(3) == "An") || (server.args() == 4)) &&
-      (server.argName(0) == "Stunde") && (server.argName(1) == "Minute") && (server.argName(2) == "Sekunde")
-     ) {
-    tmElements_t tmSet;
-    tmSet.Year = 1;
-    tmSet.Month = 1;
-    tmSet.Day = 1;
-    tmSet.Hour = min(23, max(0, int(server.arg(0).toInt())));
-    tmSet.Minute = min(59, max(0, int(server.arg(1).toInt())));
-    tmSet.Second = min(59, max(0, int(server.arg(2).toInt())));
+  tmElements_t tmSet;
+  tmSet.Year = 1;
+  tmSet.Month = 1;
+  tmSet.Day = 1;
+  tmSet.Second = 0;
+  bool _Aktiv = false;
+  time_t w[7];
+  bool a[7];
+  bool u[7]; // Zeit für Wochentag gefunden..
 
-    time_t w = makeTime(tmSet);
-    __WZ.setze_Weckzeit(0, w, (server.arg(3) == "on"));
-    __WZ.speichern();
-    Serial.printf("Neue Weckzeit: %d:%02d:%02d %s\n", hour(t), minute(t), second(t), (server.arg(3) == "on") ? "An" : "Aus");
-    server.sendHeader("Location", "/");
-    server.send(303, "text/html", "Location: /");
-  } else {
-    Serial.printf("Fehler in Args\n");
-    String message = "Fehler in den Args\n\n";
-    for (uint8_t i = 0; i < server.args(); i++) {
-      message += " " + server.argName(i) + ": " + server.arg(i) + "\n";
-    }
-    server.send(400, "text/plain", message);
+  for (int i = 0; i < 7; i++) {
+    a[i] = false;
+    u[7] = false;
   }
 
+  for (int i = 0; i < server.args(); i++) {
+    if (server.argName(i) == "Aktiv") {
+      _Aktiv = true;
+    } else if (server.argName(i) == "Mo") {
+      u[2] = true;
+      tmSet.Hour = parseZeit_Stunde(server.arg(i));
+      tmSet.Minute = parseZeit_Minute(server.arg(i));
+      w[2] = makeTime(tmSet);
+    } else if (server.argName(i) == "Di") {
+      u[3] = true;
+      tmSet.Hour = parseZeit_Stunde(server.arg(i));
+      tmSet.Minute = parseZeit_Minute(server.arg(i));
+      w[3] = makeTime(tmSet);
+    } else if (server.argName(i) == "Mi") {
+      u[4] = true;
+      tmSet.Hour = parseZeit_Stunde(server.arg(i));
+      tmSet.Minute = parseZeit_Minute(server.arg(i));
+      w[4] = makeTime(tmSet);
+    } else if (server.argName(i) == "Do") {
+      u[5] = true;
+      tmSet.Hour = parseZeit_Stunde(server.arg(i));
+      tmSet.Minute = parseZeit_Minute(server.arg(i));
+      w[5] = makeTime(tmSet);
+    } else if (server.argName(i) == "Fr") {
+      u[6] = true;
+      tmSet.Hour = parseZeit_Stunde(server.arg(i));
+      tmSet.Minute = parseZeit_Minute(server.arg(i));
+      w[6] = makeTime(tmSet);
+    } else if (server.argName(i) == "Sa") {
+      u[0] = true;
+      tmSet.Hour = parseZeit_Stunde(server.arg(i));
+      tmSet.Minute = parseZeit_Minute(server.arg(i));
+      w[0] = makeTime(tmSet);
+    } else if (server.argName(i) == "So") {
+      u[1] = true;
+      tmSet.Hour = parseZeit_Stunde(server.arg(i));
+      tmSet.Minute = parseZeit_Minute(server.arg(i));
+      w[1] = makeTime(tmSet);
+    } else if (server.argName(i) == "AnMo") {
+      a[2] = true;
+    } else if (server.argName(i) == "AnDi") {
+      a[3] = true;
+    } else if (server.argName(i) == "AnMi") {
+      a[4] = true;
+    } else if (server.argName(i) == "AnDo") {
+      a[5] = true;
+    } else if (server.argName(i) == "AnFr") {
+      a[6] = true;
+    } else if (server.argName(i) == "AnSa") {
+      a[0] = true;
+    } else if (server.argName(i) == "AnSo") {
+      a[1] = true;
+    }
+  }
+  Serial.printf("Neue Weckzeiten:\nAktiv: %s\n", _Aktiv ? "Ja" : "Nein");
+  __WZ.Wecker_Aktiv(_Aktiv);
+  for (int i = 0; i < 7; i++) {
+    if (u[i]) {
+      Serial.printf("%d: %02d:%02d %s\n", i, hour(w[i]), minute(w[i]), a[i] ? "An" : "Aus");
+      __WZ.setze_Weckzeit(i, w[i], a[i]);
+    }
+  }
+  __WZ.speichern();
+  server.sendHeader("Location", "/");
+  server.send(303, "text/html", "Location:/");
 }
 
 void handleFavIcon() {
@@ -122,16 +204,29 @@ void handleFavIcon() {
 void handleLokaleZeit() {
   char temp[1000];
   time_t t = now(); // Store the current time in time
-  Serial.printf("Webaufruf /LokaleZeit um %2d:%02d:%02d\n", hour(t), minute(t), second(t));
+  char style[60];
+  switch (timeStatus()) {
+    case timeNotSet:
+      strncpy(style, "color:red;background-color:yellow;", 59);
+      break;
+    case timeNeedsSync:
+      strncpy(style, "color:yellow;", 59);
+      break;
+    case timeSet:
+    default:
+      strncpy(style, "color:black;", 59);
+      break;
+  }
+//  Serial.printf("Webaufruf /LokaleZeit um %2d:%02d:%02d\n", hour(t), minute(t), second(t));
   snprintf(temp, 1000,
-           "<html><head><meta http-equiv='refresh' content='1'/></head><body>%02d:%02d:%02d</body></html>",
-           hour(t), minute(t), second(t));
+           "<html><head><meta http-equiv='refresh' content='1'/></head><body style='%s'>%2d:%02d:%02d</body></html>",
+           style, hour(t), minute(t), second(t));
   server.send(200, "text/html", temp);
 }
 
 void handleNotFound() {
   time_t t = now(); // Store the current time in time
-  Serial.printf("Webaufruf -unbekannte Seite %s um %2d:%2d:%2d\n", server.uri().c_str(), hour(t), minute(t), second(t));
+  Serial.printf("Webaufruf - unbekannte Seite %s um %2d:%02d:%02d\n", server.uri().c_str(), hour(t), minute(t), second(t));
   String message = "File Not Found\n\n";
   message += "URI: ";
   message += server.uri();
@@ -141,7 +236,7 @@ void handleNotFound() {
   message += server.args();
   message += "\n";
   for (uint8_t i = 0; i < server.args(); i++) {
-    message += " " + server.argName(i) + ": " + server.arg(i) + "\n";
+    message += " " + server.argName(i) + ":" + server.arg(i) + "\n";
   }
   server.send(404, "text/plain", message);
 }
@@ -164,7 +259,7 @@ void setup() {
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
   while (WiFi.waitForConnectResult() != WL_CONNECTED) {
-    Serial.println("Keine Wifi-Verbingung! Neustart in 5 Sekunden...");
+    Serial.println("Keine Wifi-Verbindung! Neustart in 5 Sekunden...");
     delay(5000);
     ESP.restart();
   }
@@ -201,9 +296,12 @@ void setup() {
 
 void loop() {
   time_t t = now(); // Store the current time in time
+
   if (Serial.available() > 0) {
     // read the incoming byte:
-    char _c  = Serial.read();
+    while (Serial.available() > 0) {
+      /*char _c  =*/ Serial.read();
+    }
     if (__SA.Laeuft()) {
       Serial.printf("Stoppe Sonnenaufgang um %d:%02d:02d\n", hour(t), minute(t), second(t));
       __SA.Stop();
@@ -212,6 +310,7 @@ void loop() {
       __SA.Start();
     }
   }
+
   switch (__Knopf.Status()) {
     case Knopf::nix:
       break;
@@ -224,15 +323,12 @@ void loop() {
       if (__SA.Laeuft()) {
         __SA.Nachricht(Sonnenaufgang::gelb); // Gelb zeigt, dass jetzt 24 h Ruhe ist
       } else {
-        time_t w = __WZ.Weckzeit(0);
-        if (__WZ.Wecker_An(0)) {
+        if (__WZ.Wecker_Aktiv()) { // Wecker aktiv --> auf inaktiv setzen und rot blinken
           __SA.Nachricht(Sonnenaufgang::rot); // Rot zeigt, dass jetzt Weckzeiten de-aktiviert sind
-          // ist nur ein Hack, muss noch richtig gemacht werden (eigener Status)
-          __WZ.setze_Weckzeit(0, w, false);
-        } else {
+          __WZ.Wecker_Aktiv(false);
+        } else { // Wecker inaktiv --> auf aktiv setzen und grün blinken
           __SA.Nachricht(Sonnenaufgang::gruen); // Rot zeigt, dass jetzt Weckzeiten de-aktiviert sind
-          // ist nur ein Hack, muss noch richtig gemacht werden (eigener Status)
-          __WZ.setze_Weckzeit(0, w, true);
+          __WZ.Wecker_Aktiv(true);
         }
       }
       break;
@@ -240,13 +336,14 @@ void loop() {
 
   if (__WZ.jetztWecken(t)) {
     if (!__SA.Laeuft()) {
-      Serial.printf("Weckzeit erreicht, starte Sonnenaufgang um %d:%02d:02d\n", hour(t), minute(t), second(t));
+      Serial.printf("Weckzeit erreicht, starte Sonnenaufgang um %d:%02d:%02d\n", hour(t), minute(t), second(t));
       __SA.Start();
     }
   }
 
   __SA.Tick();
   server.handleClient();
+
   delay(20);
 }
 

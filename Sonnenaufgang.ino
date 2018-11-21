@@ -125,7 +125,7 @@ void Sonnenaufgang::Start() {
   _Modus = aufgang;
   _Startzeit = millis();
   digitalWrite(LED_BUILTIN, LOW); // bei Sonoff Basic HIGH = OFF
-  Serial.printf("Starte Sonnenaufgang bei %d, Dauer %d Nachlaufzeit %d\n", _Startzeit, _Dauer, _Nachlaufzeit);
+  Serial.printf("Starte Sonnenaufgang bei %ld, Dauer %ld Nachlaufzeit %ld\n", _Startzeit, _Dauer, _Nachlaufzeit);
 }
 
 bool Sonnenaufgang::Snooze() {
@@ -136,7 +136,7 @@ bool Sonnenaufgang::Snooze() {
 }
 
 void Sonnenaufgang::Stop() {
-  Serial.printf("Stoppe Sonnenaufgang bei %d (nach %d)\n", millis(), millis() - _Startzeit);
+  Serial.printf("Stoppe Sonnenaufgang bei %lu (nach %ld)\n", millis(), (long)(millis() - _Startzeit));
   // Stop löscht das Licht und setzt _Startzeit wieder auf 0
   for (uint16_t _n = 0; _n < __strip.numPixels(); _n++) {
     __strip.setPixelColor(_n, 0);
@@ -153,7 +153,7 @@ void Sonnenaufgang::Nachricht(Farb_t farbe) {
   _Startzeit = millis();
   _Farbe = farbe;
   digitalWrite(LED_BUILTIN, LOW); // bei Sonoff Basic HIGH = OFF
-  Serial.printf("Starte Nachricht bei %d, Dauer %d, Farbe #%d\n", _Startzeit, _Dauer, _Farbe);
+  Serial.printf("Starte Nachricht bei %ld, Dauer %ld, Farbe #%d\n", _Startzeit, _Dauer, _Farbe);
 }
 bool Sonnenaufgang::Laeuft() {
   return _Startzeit > 0;
@@ -199,9 +199,11 @@ void Sonnenaufgang::Tick_Nachricht(long ms) {
       case gruen:
         _f = __strip.Color(0, 255, 0);
         break;
+      default:
+        _f = __strip.Color(255, 255, 255);
+        break;
     }
     for (uint16_t _n = 0; _n < __strip.numPixels(); _n++) {
-      float _x = (float)_n * LAENGE / __strip.numPixels();
       __strip.setPixelColor(_n, _f);
     }
     __strip.show();
