@@ -59,7 +59,7 @@ void HSV_to_RGB(float h, float s, float v, uint8_t *r, uint8_t *g, uint8_t *b)
   }
 }
 
-uint32_t Lichtfarbe(float t, float x) {
+uint32_t Sonnenaufgang::Lichtfarbe(float t, float x) {
   // Kurvenverlauf für Lichtfarbe(t-x/v):
   //        ____
   //       /
@@ -67,13 +67,13 @@ uint32_t Lichtfarbe(float t, float x) {
   //  ___/
   //
   // x ausserhalb der Wert macht keine Sinn
-  float _x = max(0.0f, min(LAENGE, x));
-  float _x_prime = (2.0 * _x - LAENGE) / GESCHWINDIGKEIT;
+  float _x = max(0.0f, min(_konfig_laenge, x));
+  float _x_prime = (2.0 * _x - _konfig_laenge) / _konfig_v;
   if (_x_prime < 0)
     _x_prime = -_x_prime;
   float _t_x = t - _x_prime;
-  _t_x = max(0.0f, min(DAUER, _t_x));
-  _t_x /= DAUER;
+  _t_x = max(0.0f, min(_konfig_dauer, _t_x));
+  _t_x /= _konfig_dauer;
 
   float _h;
   if (_t_x < 0.9)
@@ -108,6 +108,11 @@ uint32_t Lichtfarbe(float t, float x) {
 }
 
 Sonnenaufgang::Sonnenaufgang() {
+  _konfig_laenge = LAENGE;
+  _konfig_v = GESCHWINDIGKEIT;
+  _konfig_dauer = DAUER;
+  _konfig_nachleuchten = NACHLEUCHTEN;
+  _konfig_snooze = SNOOZE;
 }
 
 void Sonnenaufgang::Beginn() {
@@ -120,8 +125,8 @@ void Sonnenaufgang::Start() {
   // Start merkt sich die Startzeit (jetzt).
   // Wenn Startzeit > 0 ist, läuft ein Sonnenaufgang
   // Sollte ein Sonnenaufgang bereits laufen --> von neuem anfangen
-  _Nachlaufzeit = round(NACHLEUCHTEN * 1000);
-  _Dauer = round(DAUER * 1000);
+  _Nachlaufzeit = round(_konfig_nachleuchten * 1000);
+  _Dauer = round(_konfig_dauer * 1000);
   _Modus = aufgang;
   _Startzeit = millis();
   digitalWrite(LED_BUILTIN, LOW); // bei Sonoff Basic HIGH = OFF
@@ -131,7 +136,7 @@ void Sonnenaufgang::Start() {
 bool Sonnenaufgang::Snooze() {
   if (_Startzeit == 0)
     return false; // es läuft kein Aufgang, als kein Snooze..
-  _Startzeit = millis()+ round(SNOOZE*1000);
+  _Startzeit = millis() + round(_konfig_snooze * 1000);
   return true;
 }
 
@@ -146,9 +151,17 @@ void Sonnenaufgang::Stop() {
   digitalWrite(LED_BUILTIN, HIGH); // bei Sonoff Basic HIGH = OFF
 }
 
-void Sonnenaufgang::Nachricht(Farb_t farbe) {
+void Sonnenaufgang::Nachricht(Farb_t farbe, Dauer_t dauer) {
   _Nachlaufzeit = 0;
-  _Dauer = round(BLINKDAUER * 1000);
+  switch (dauer) {
+    case kurz:
+      _Dauer = round(BLINKDAUER * 1000);
+      break;
+    case lang:
+      _Dauer = round(3 * BLINKDAUER * 1000);
+    default:
+      break;
+  }
   _Modus = nachricht;
   _Startzeit = millis();
   _Farbe = farbe;
@@ -180,7 +193,7 @@ void Sonnenaufgang::Tick() {
 
 void Sonnenaufgang::Tick_Aufgang(long ms) {
   for (uint16_t _n = 0; _n < __strip.numPixels(); _n++) {
-    float _x = (float)_n * LAENGE / __strip.numPixels();
+    float _x = (float)_n * _konfig_laenge / __strip.numPixels();
     __strip.setPixelColor(_n, Lichtfarbe(ms / 1000., _x));
   }
   __strip.show();

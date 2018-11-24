@@ -1,10 +1,6 @@
 #ifndef _KNOPF
 #define _KNOPF
 
-// Globale Variablen starten immer mit __[a-z]
-// lokale Variable starten mit _[a-z]
-// Argumente starten mit [a-z]
-
 #define KNOPF_PIN 0		// Sonoff Taster
 #define LANG	  1500	// [ms] ab welcher Dauer zählt der Tastendruck als "lang"	
 

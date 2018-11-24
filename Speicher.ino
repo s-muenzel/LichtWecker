@@ -1,19 +1,34 @@
 #include "Speicher.h"
 #include <EEPROM.h>
 
+#define POS_WZ            0
+#define POS_AN            sizeof(_WZ)
+#define POS_AKTIV         POS_AN + sizeof(_An)
+#define POS_LAENGE        POS_AKTIV + sizeof(_Aktiv)
+#define POS_V             POS_LAENGE + sizeof(float)
+#define POS_DAUER         POS_V + sizeof(float)
+#define POS_NACHLEUCHTEN  POS_DAUER + sizeof(float)
+#define POS_SNOOZE        POS_NACHLEUCHTEN + sizeof(float)
+#define GROESSE_ALLES     POS_SNOOZE + sizeof(float)
 
 Speicher::Speicher() {
 }
 
 void Speicher::Beginn() {
-  EEPROM.begin(sizeof(_WZ) + sizeof(_An) + sizeof(_Aktiv));
-  EEPROM.get(0, _WZ);
-  EEPROM.get(sizeof(_WZ), _An);
-  EEPROM.get(sizeof(_WZ) + sizeof(_An), _Aktiv);
+  EEPROM.begin(GROESSE_ALLES);
+  EEPROM.get(POS_WZ, _WZ);
+  EEPROM.get(POS_AN, _An);
+  EEPROM.get(POS_AKTIV, _Aktiv);
+  EEPROM.get(POS_LAENGE, _konfig_laenge);
+  EEPROM.get(POS_V, _konfig_v);
+  EEPROM.get(POS_DAUER, _konfig_dauer);
+  EEPROM.get(POS_NACHLEUCHTEN, _konfig_nachleuchten);
+  EEPROM.get(POS_SNOOZE, _konfig_snooze);
+  Serial.printf("Wecker ist %s\n", _Aktiv ? "An" : "Aus");
   for (uint8_t i = 0; i < 7; i++) {
-    Serial.printf(" Wecker ist %s\n", _Aktiv ? "An" : "Aus");
     Serial.printf("_Weckzeit %d: %d:%02d:%02d (%s)\n", i, hour(_WZ[i]), minute(_WZ[i]), second(_WZ[i]), _An[i] ? "An" : "Aus");
   }
+  Serial.printf("L=%f, v=%f, d=%f n=%f, s=%f\n", _konfig_laenge, _konfig_v, _konfig_dauer, _konfig_nachleuchten, _konfig_snooze);
 }
 
 time_t Speicher::Weckzeit(int Tag) {
@@ -46,9 +61,48 @@ void Speicher::speichern() {
 
 bool Speicher::jetztWecken(time_t Jetzt) {
   if (Wecker_Aktiv()) {
-    int _Tag = weekday(Jetzt) % 7;    
+    int _Tag = weekday(Jetzt) % 7;
     return (hour(Jetzt) == hour(_WZ[_Tag])) && (minute(Jetzt) == minute(_WZ[_Tag])) && (second(Jetzt) == second(_WZ[_Tag]));
   } else // Wecker ist inaktiv
     return false;
+}
+
+float Speicher::lese_SA_laenge() {
+  EEPROM.get(POS_LAENGE, _konfig_laenge);
+}
+
+float Speicher::lese_SA_v() {
+  EEPROM.get(POS_V, _konfig_v);
+}
+
+float Speicher::lese_SA_dauer() {
+  EEPROM.get(POS_DAUER, _konfig_dauer);
+}
+
+float Speicher::lese_SA_nachleuchten() {
+  EEPROM.get(POS_NACHLEUCHTEN, _konfig_nachleuchten);
+}
+
+float Speicher::lese_SA_snooze() {
+  EEPROM.get(POS_SNOOZE, _konfig_snooze);
+}
+
+void Speicher::setze_SA_laenge(float f) {
+  EEPROM.put(POS_LAENGE, _konfig_laenge);
+}
+
+void Speicher::setze_SA_v(float f) {
+  EEPROM.put(POS_V, _konfig_v);
+}
+void Speicher::setze_SA_dauer(float f) {
+  EEPROM.put(POS_DAUER, _konfig_dauer);
+}
+
+void Speicher::setze_SA_nachleuchten(float f) {
+  EEPROM.put(POS_NACHLEUCHTEN, _konfig_nachleuchten);
+}
+
+void Speicher::setze_SA_snooze(float f) {
+  EEPROM.put(POS_SNOOZE, _konfig_snooze);
 }
 
