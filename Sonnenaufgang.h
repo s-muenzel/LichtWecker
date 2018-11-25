@@ -2,13 +2,14 @@
 #define _SONNENAUFGANG
 
 // an welchem PIN hängt die Lichterkette
-//#define PIN 6
-#define PIN 14 // Sonoff GPIO 14
+#define KETTE_PIN 14  // Sonoff Basic: GPIO 14
+#define RELAIS_PIN 12 // Sonoff Basic: GPIO 12
+
 
 // Meine LED-Kette ist 1m mit 30 LEDs
-#define NUM_LEDS 60
+#define NUM_LEDS 30
 #define LAENGE 1.0f          // [m] Länge des LED-Strips
-#define GESCHWINDIGKEIT 0.2f // [m/s] Ausbreitungsgeschwindigkeit v 
+#define GESCHWINDIGKEIT 0.1f // [m/s] Ausbreitungsgeschwindigkeit v 
 #define DAUER 20.0f          // [s] wie lange dauert der "Sonnenaufgang"
 #define NACHLEUCHTEN 2.0f    // [s] wie lange bleibt das Licht nach dem "Sonnenaufgang" an
 #define SNOOZE  5.f          // [s] wie lange dauert ein Snooze (Pause, nach einen Snooze-Call)
@@ -78,6 +79,8 @@ class Sonnenaufgang {
     float _konfig_dauer;
     float _konfig_nachleuchten;
     float _konfig_snooze;
+
+    bool _status_Relais;
 };
 
 #endif // _SONNENAUFGANG

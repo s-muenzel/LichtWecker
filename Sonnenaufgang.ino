@@ -2,7 +2,7 @@
 
 #include <Adafruit_NeoPixel.h>
 
-Adafruit_NeoPixel __strip = Adafruit_NeoPixel(NUM_LEDS, PIN, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel __strip = Adafruit_NeoPixel(NUM_LEDS, KETTE_PIN, NEO_GRB + NEO_KHZ800);
 
 // Kudus an hdznrrd au Github (fehlerkorrigiert)
 void HSV_to_RGB(float h, float s, float v, uint8_t *r, uint8_t *g, uint8_t *b)
@@ -68,9 +68,16 @@ uint32_t Sonnenaufgang::Lichtfarbe(float t, float x) {
   //
   // x ausserhalb der Wert macht keine Sinn
   float _x = max(0.0f, min(_konfig_laenge, x));
+  // wenn von der Mitte angefangen werden soll
+/*   
   float _x_prime = (2.0 * _x - _konfig_laenge) / _konfig_v;
   if (_x_prime < 0)
-    _x_prime = -_x_prime;
+    _x_prime = -_x_prime;*/
+// Wenn vom Anfang angefangen werden soll
+/*
+  float _x_prime = _x / _konfig_v; */
+// Wenn vom Ende angefangen werden soll
+  float _x_prime = (_konfig_laenge - _x) / _konfig_v;
   float _t_x = t - _x_prime;
   _t_x = max(0.0f, min(_konfig_dauer, _t_x));
   _t_x /= _konfig_dauer;
@@ -113,18 +120,31 @@ Sonnenaufgang::Sonnenaufgang() {
   _konfig_dauer = DAUER;
   _konfig_nachleuchten = NACHLEUCHTEN;
   _konfig_snooze = SNOOZE;
+  pinMode(RELAIS_PIN, OUTPUT);
 }
 
 void Sonnenaufgang::Beginn() {
   __strip.begin();
   __strip.setBrightness(255);
   __strip.show(); // Initialiere alle auf "Aus"
+
+  Serial.printf("RELAIS AUS");
+  digitalWrite(RELAIS_PIN, LOW);
+  _status_Relais = false;
 }
 
 void Sonnenaufgang::Start() {
   // Start merkt sich die Startzeit (jetzt).
   // Wenn Startzeit > 0 ist, läuft ein Sonnenaufgang
   // Sollte ein Sonnenaufgang bereits laufen --> von neuem anfangen
+
+  // immer zuerst sicherstellen, dass das Relais an ist
+  if (!_status_Relais) {
+    Serial.printf("RELAIS AN");
+    digitalWrite(RELAIS_PIN, HIGH);
+    delay(50); // mal kurz warten, damit das Relais auch sicher angezogen hat
+    _status_Relais = true;
+  }
   _Nachlaufzeit = round(_konfig_nachleuchten * 1000);
   _Dauer = round(_konfig_dauer * 1000);
   _Modus = aufgang;
@@ -149,9 +169,18 @@ void Sonnenaufgang::Stop() {
   __strip.show();
   _Startzeit = 0;
   digitalWrite(LED_BUILTIN, HIGH); // bei Sonoff Basic HIGH = OFF
+  digitalWrite(RELAIS_PIN, LOW); // Relais aus
+  _status_Relais = false;
 }
 
 void Sonnenaufgang::Nachricht(Farb_t farbe, Dauer_t dauer) {
+  // immer zuerst sicherstellen, dass das Relais an ist
+  if (!_status_Relais) {
+    Serial.printf("RELAIS AN");
+    digitalWrite(RELAIS_PIN, HIGH);
+    delay(50); // mal kurz warten, damit das Relais auch sicher angezogen hat
+    _status_Relais = true;
+  }
   _Nachlaufzeit = 0;
   switch (dauer) {
     case kurz:
@@ -187,6 +216,12 @@ void Sonnenaufgang::Tick() {
           Tick_Nachricht(_ms);
           break;
       }
+    }
+  } else {
+    if (_status_Relais) {
+      Serial.printf("RELAIS AUS");
+      digitalWrite(RELAIS_PIN, LOW);
+      _status_Relais = false;
     }
   }
 }

@@ -189,10 +189,10 @@ void handleKonfig() {
            "<html><head><title>Lichtwecker</title></head>\
 <body><h1>Lichtwecker</h1><h2>Konfiguration</h2>\n\
 <form action='/Setze_Konfig' method='POST'><table>\
-<tr><td>Laenge</td><td><input type='number' name='L' value='%f'></td></tr>\
+<tr><td>Laenge</td><td><input type='number' min='0.5' max='2.0' step='0.1'  name='L' value='%f'></td></tr>\
 <tr><td>Geschwindigkeit</td><td><input type='number' min='0.01' max='1.0' step='0.01' name='V' value='%f'></td></tr>\
 <tr><td>Dauer Aufgang</td><td><input type='number' min='10' max='300' step='1' name='D' value='%f'></td></tr>\
-<tr><td>Dauer Hell</td><td><input type='number' min='2' max='60' step='1'  name='N' value='%f'></td></tr>\
+<tr><td>Dauer Hell</td><td><input type='number' min='2' max='300' step='1'  name='N' value='%f'></td></tr>\
 <tr><td>Snooze-Zeit</td><td><input type='number' min='10' max='600' step='1'  name='S' value='%f'></td></tr>\
 <tr><td></td><td></td><td><input type='submit' name='ok' value='ok'></td></tr></table></form>\
 </html>",
@@ -211,20 +211,30 @@ void handleSetzeKonfig() {
 
   for (int i = 0; i < server.args(); i++) {
     if (server.argName(i) == "L") {
-      Serial.printf("Konfig: Laenge: %f\n", server.arg(i).toFloat());
-      __WZ.setze_SA_laenge(server.arg(i).toFloat());
+      float f = server.arg(i).toFloat();
+      Serial.printf("Konfig: Laenge: %f\n", f);
+      __WZ.setze_SA_laenge(f);
+      __SA.Setze_Laenge(f);
     } else if (server.argName(i) == "V") {
-      Serial.printf("Konfig: V: %f\n", server.arg(i).toFloat());
-      __WZ.setze_SA_v(server.arg(i).toFloat());
+      float f = server.arg(i).toFloat();
+      Serial.printf("Konfig: V: %f\n", f);
+      __WZ.setze_SA_v(f);
+      __SA.Setze_v(f);
     } else if (server.argName(i) == "D") {
-      Serial.printf("Konfig: Dauer: %f\n", server.arg(i).toFloat());
-      __WZ.setze_SA_dauer(server.arg(i).toFloat());
+      float f = server.arg(i).toFloat();
+      Serial.printf("Konfig: Dauer: %f\n", f);
+      __WZ.setze_SA_dauer(f);
+      __SA.Setze_Dauer(f);
     } else if (server.argName(i) == "N") {
-      Serial.printf("Konfig: Nachleuchten: %f\n", server.arg(i).toFloat());
-      __WZ.setze_SA_nachleuchten(server.arg(i).toFloat());
+      float f = server.arg(i).toFloat();
+      Serial.printf("Konfig: Nachleuchten: %f\n", f);
+      __WZ.setze_SA_nachleuchten(f);
+      __SA.Setze_Nachleuchten(f);
     } else if (server.argName(i) == "S") {
-      Serial.printf("Konfig: Snooze: %f\n", server.arg(i).toFloat());
-      __WZ.setze_SA_snooze(server.  arg(i).toFloat());
+      float f = server.arg(i).toFloat();
+      Serial.printf("Konfig: Snooze: %f\n", f);
+      __WZ.setze_SA_snooze(f);
+      __SA.Setze_Snooze(f);
     }
   }
   __WZ.speichern();
@@ -364,8 +374,7 @@ void loop() {
       }
       else {
         if (__WZ.Wecker_Aktiv()) {
-          __SA.Nachricht(Sonnenaufgang::gruen, Sonnenaufgang::kurz); // Rot zeigt, dass jetzt Weckzeiten de-aktiviert sind
-
+          __SA.Nachricht(Sonnenaufgang::gruen, Sonnenaufgang::kurz); // gruen zeigt, dass jetzt Weckzeiten aktiviert sind
         } else {
           __SA.Nachricht(Sonnenaufgang::rot, Sonnenaufgang::kurz); // Rot zeigt, dass jetzt Weckzeiten de-aktiviert sind
         }
