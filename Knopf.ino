@@ -28,3 +28,7 @@ Knopf::_Event_t Knopf::Status() {
   }
   return nix;
 }
+
+int Knopf::WieLang() {
+  return _Lang;
+}

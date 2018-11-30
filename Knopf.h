@@ -18,6 +18,8 @@ class Knopf {
 
     _Event_t Status();
 
+    int WieLang();
+
   private:
 
     long _Start;		// [ms] - wann wurde der Knopf gedrückt

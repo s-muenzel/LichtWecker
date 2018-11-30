@@ -173,7 +173,7 @@ void Sonnenaufgang::Stop() {
   _status_Relais = false;
 }
 
-void Sonnenaufgang::Nachricht(Farb_t farbe, Dauer_t dauer) {
+void Sonnenaufgang::Nachricht(Farb_t farbe, Dauer_t dauer, uint8_t prozent) {
   // immer zuerst sicherstellen, dass das Relais an ist
   if (!_status_Relais) {
     Serial.printf("RELAIS AN");
@@ -192,6 +192,7 @@ void Sonnenaufgang::Nachricht(Farb_t farbe, Dauer_t dauer) {
       break;
   }
   _Modus = nachricht;
+  _Prozent = prozent;
   _Startzeit = millis();
   _Farbe = farbe;
   digitalWrite(LED_BUILTIN, LOW); // bei Sonoff Basic HIGH = OFF
@@ -247,14 +248,21 @@ void Sonnenaufgang::Tick_Nachricht(long ms) {
       case gruen:
         _f = __strip.Color(0, 255, 0);
         break;
+      case lila:
+        _f = __strip.Color(255, 0, 255);
+        break;
       default:
         _f = __strip.Color(255, 255, 255);
         break;
     }
-    for (uint16_t _n = 0; _n < __strip.numPixels(); _n++) {
+    uint16_t numP = (__strip.numPixels() * _Prozent ) / 100;
+    uint16_t _n;
+    for (_n = 0; _n < numP; _n++) {
       __strip.setPixelColor(_n, _f);
     }
+    for (; _n < __strip.numPixels(); _n++) {
+      __strip.setPixelColor(_n, 0);
+    }    
     __strip.show();
   }
 }
-

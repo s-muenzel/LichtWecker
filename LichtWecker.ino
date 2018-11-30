@@ -6,6 +6,8 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
+#include <WiFiUdp.h>
+#include <ArduinoOTA.h>
 
 #include <Time.h>
 #include <TimeLib.h>
@@ -24,6 +26,7 @@ Speicher __WZ;
 Sonnenaufgang __SA;
 Knopf __Knopf;
 NTP_Helfer __NTP;
+bool __OTA_An;
 
 void handleRoot() {
   char temp[2000];
@@ -191,9 +194,9 @@ void handleKonfig() {
 <form action='/Setze_Konfig' method='POST'><table>\
 <tr><td>Laenge</td><td><input type='number' min='0.5' max='2.0' step='0.1'  name='L' value='%f'></td></tr>\
 <tr><td>Geschwindigkeit</td><td><input type='number' min='0.01' max='1.0' step='0.01' name='V' value='%f'></td></tr>\
-<tr><td>Dauer Aufgang</td><td><input type='number' min='10' max='300' step='1' name='D' value='%f'></td></tr>\
-<tr><td>Dauer Hell</td><td><input type='number' min='2' max='300' step='1'  name='N' value='%f'></td></tr>\
-<tr><td>Snooze-Zeit</td><td><input type='number' min='10' max='600' step='1'  name='S' value='%f'></td></tr>\
+<tr><td>Dauer Aufgang</td><td><input type='number' min='10' max='600' step='1' name='D' value='%f'></td></tr>\
+<tr><td>Dauer Hell</td><td><input type='number' min='2' max='600' step='1'  name='N' value='%f'></td></tr>\
+<tr><td>Snooze-Zeit</td><td><input type='number' min='10' max='900' step='1'  name='S' value='%f'></td></tr>\
 <tr><td></td><td></td><td><input type='submit' name='ok' value='ok'></td></tr></table></form>\
 </html>",
            __WZ.lese_SA_laenge(),
@@ -260,7 +263,7 @@ void handleLokaleZeit() {
   }
   //  Serial.printf("Webaufruf /LokaleZeit um %2d:%02d:%02d\n", hour(t), minute(t), second(t));
   snprintf(temp, 1000,
-           "<html><head><meta http-equiv='refresh' content='1'/></head><body style='%s'>%2d:%02d:%02d</body></html>",
+           "<html><head><meta http-equiv='refresh' content='10'/></head><body style='%s'>%2d:%02d:%02d</body></html>",
            style, hour(t), minute(t), second(t));
   server.send(200, "text/html", temp);
 }
@@ -319,7 +322,7 @@ void setup() {
   }
   Serial.printf(" Wifi %s (IP Address %s)", ssid, WiFi.localIP().toString().c_str());
 
-  if (MDNS.begin("esp8266")) {
+  if (MDNS.begin("Lichtwecker")) {
     Serial.print(" MDNS responder");
   }
 
@@ -343,6 +346,59 @@ void setup() {
   __Knopf.Beginn();
   Serial.print(" Taster");
 
+  // OTA Initialisieren
+  __OTA_An = false;
+  // Port defaults to 8266
+  // ArduinoOTA.setPort(8266);
+  // Hostname defaults to esp8266-[ChipID]
+  ArduinoOTA.setHostname("Lichtwecker"); // überschreibt wohl den Aufruf von MDNS.begin()
+  // No authentication by default
+  //  ArduinoOTA.setPassword("...");
+  // Password can be set with it's md5 value as well
+  // MD5(admin) = 21232f297a57a5a743894a0e4a801fc3
+  ArduinoOTA.setPasswordHash("30eb558f1c129d200efbfed6eb6d8466");
+  ArduinoOTA.setRebootOnSuccess(true);
+  ArduinoOTA.onStart([]() {
+    __SA.Stop();
+    Serial.println("Start updating ");
+  });
+  ArduinoOTA.onEnd([]() {
+    __SA.Stop();
+    Serial.println("\nEnd");
+  });
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+    static Sonnenaufgang::Farb_t _farbe = Sonnenaufgang::gruen;
+    switch (_farbe) {
+      case Sonnenaufgang::gruen:
+        __SA.Nachricht(Sonnenaufgang::gruen, Sonnenaufgang::lang, (progress * 100) / total);
+        _farbe = Sonnenaufgang::gelb;
+        break;
+      case Sonnenaufgang::gelb:
+        __SA.Nachricht(Sonnenaufgang::gelb, Sonnenaufgang::lang, (progress * 100) / total);
+        _farbe = Sonnenaufgang::rot;
+        break;
+      case Sonnenaufgang::rot:
+        __SA.Nachricht(Sonnenaufgang::rot, Sonnenaufgang::lang, (progress * 100) / total);
+        _farbe = Sonnenaufgang::gruen;
+        break;
+    }
+    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+  });
+  ArduinoOTA.onError([](ota_error_t error) {
+    Serial.printf("Error[%u]: ", error);
+    if (error == OTA_AUTH_ERROR) {
+      Serial.println("Auth Failed");
+    } else if (error == OTA_BEGIN_ERROR) {
+      Serial.println("Begin Failed");
+    } else if (error == OTA_CONNECT_ERROR) {
+      Serial.println("Connect Failed");
+    } else if (error == OTA_RECEIVE_ERROR) {
+      Serial.println("Receive Failed");
+    } else if (error == OTA_END_ERROR) {
+      Serial.println("End Failed");
+    }
+  });
+  Serial.println(" OTA vorbereitet");
 
   Serial.println("Fertig");
 }
@@ -393,6 +449,11 @@ void loop() {
           __WZ.Wecker_Aktiv(true);
         }
       }
+      if  (__Knopf.WieLang() == 6) { // jetzt wirklich lang gedrückt (~10s) --> schalte OTA ein
+        __SA.Nachricht(Sonnenaufgang::lila, Sonnenaufgang::lang); // lila zeigt, dass jetzt OTA aktiviert ist
+        __OTA_An = true;
+        ArduinoOTA.begin();
+      }
       break;
   }
 
@@ -405,7 +466,9 @@ void loop() {
 
   __SA.Tick();
   server.handleClient();
+  if (__OTA_An) {
+    ArduinoOTA.handle();
+  }
 
   delay(20);
 }
-

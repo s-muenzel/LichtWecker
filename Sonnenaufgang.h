@@ -44,7 +44,8 @@ class Sonnenaufgang {
     typedef enum _Farb_t {
       gruen,
       gelb,
-      rot
+      rot,
+      lila
     } Farb_t;
 
     typedef enum _Dauer_t {
@@ -52,7 +53,7 @@ class Sonnenaufgang {
       lang
     } Dauer_t;
 
-    void Nachricht(Farb_t farbe, Dauer_t dauer);
+    void Nachricht(Farb_t farbe, Dauer_t dauer, uint8_t prozent = 100);
 
     bool Laeuft();
 
@@ -73,6 +74,7 @@ class Sonnenaufgang {
     long _Startzeit;    // [ms] - läuft, bzw. seit wann läuft ein S.A.
     long _Nachlaufzeit; // [ms] - wie lange bleibt das Licht nach der Dauer des Sonnenuntergangs an?
     long _Dauer;        // [ms] - wie lange dauert es, bis bei einem S.A. das Licht auf MAX ist
+    uint8_t _Prozent;   // [%] - für Fortschrittsanzeige beim Flashen
 
     float _konfig_laenge;
     float _konfig_v;
@@ -84,4 +86,3 @@ class Sonnenaufgang {
 };
 
 #endif // _SONNENAUFGANG
-
