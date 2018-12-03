@@ -202,6 +202,7 @@ void setup() {
 void loop() {
   time_t t = now(); // Store the current time in time
   if (Serial.available() > 0) {
+    // read the incoming data:
     while (Serial.available() > 0) {
       char _c  = Serial.read();
     }
