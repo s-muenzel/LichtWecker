@@ -451,6 +451,8 @@ void handleFileList() {
     output += (isDir) ? "dir" : "file";
     output += "\",\"name\":\"";
     output += String(entry.name()).substring(1);
+    output += "\",\"size\":\"";
+    output += String(entry.size());
     output += "\"}";
     entry.close();
   }
@@ -462,21 +464,22 @@ void handleFileList() {
 void handleUpload() {
   Serial.println("Seite handleUpload");
 
-  WiFiClient client = server.client();
-  char msg1[] = "<html><head></head><body><form action='/edit' method='post' enctype='multipart/form-data'><input type='file' name='name'><input class='button' type='submit' value='Upload'></form>";
-  client.write( msg1, strlen(msg1) );
+//  WiFiClient client = server.client();
+  String output;
+  output = "<html><head></head><body><form action='/edit' method='post' enctype='multipart/form-data'><input type='file' name='name'><input class='button' type='submit' value='Upload'></form>";
+//  client.write( msg1, strlen(msg1) );
 
   Dir dir = SPIFFS.openDir("/");
 
   while (dir.next()) {
     File entry = dir.openFile("r");
 
-    String output = String("<form action='/edit' method='delete'><input class='button' type='submit' value='") + entry.name() + String("'></form>");
-    client.write( output.c_str(), strlen(output.c_str()) );
+    output += String("<form action='/edit' method='delete'><input class='button' type='submit' value='") + entry.name() + String("'></form>");
+//    client.write( output.c_str(), strlen(output.c_str()) );
     entry.close();
   }
-  char msg2[] = "</body>";
-  server.send(200, "text/html", msg2);
+  output += "</body>";
+  server.send(200, "text/html", output);
 }
 ///////////
 
