@@ -1,0 +1,92 @@
+h1 {
+	text-shadow: 1px 1px grey;
+}
+
+input[type=time] {
+    width: 10em;
+    padding: 3px 2px;
+    margin: 1px 0;
+    display: inline-block;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+input[type=number] {
+	float: right;
+    width: 6em;
+    padding: 3px 2px;
+    margin: 1px 0;
+    display: inline-block;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+input[type=submit] {
+    width: 100%;
+    background-color: #aaa;
+    color: white;
+    padding: 0.8em 2em;
+    margin: 10px 0;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+input[type=submit]:hover {
+    background-color: #45a049;
+}
+
+input[type=checkbox] {
+    float: right;
+}
+
+div.W_C {
+	width: 5em;
+    padding: 3px 2px;
+    margin: 1px 0;
+    display: inline-block;
+}
+
+div.Tag {
+    width: 15em;
+    border-radius: 0.4em;
+    background-color: #f2f2f2;
+    padding: 0.5em;
+}
+
+div.Tag:hover {
+    background-color: #ccc;
+}
+
+span {
+	display: inline-block;
+}
+
+ul {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background-color: #333;
+}
+
+li {
+    float: left;
+}
+
+
+li a {
+    display: block;
+    color: white;
+    text-align: center;
+    padding: 14px 16px;
+    text-decoration: none;
+}
+
+li a:hover {
+    background-color: #111;
+}
+
+.active {
+	background-color: #aaa;
+}

@@ -12,7 +12,7 @@ void OTA::Beginn() {
   // Port defaults to 8266
   // ArduinoOTA.setPort(8266);
   // Hostname defaults to esp8266-[ChipID]
-  ArduinoOTA.setHostname("Lichtwecker"); // überschreibt wohl den Aufruf von MDNS.begin()
+  ArduinoOTA.setHostname(__Hostname); // überschreibt wohl den Aufruf von MDNS.begin()
   // No authentication by default
   //  ArduinoOTA.setPassword("...");
   // Password can be set with it's md5 value as well

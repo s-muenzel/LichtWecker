@@ -8,7 +8,6 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
 
-
 #include <Time.h>
 #include <TimeLib.h>
 
@@ -17,9 +16,11 @@
 // Argumente starten mit [a-z]
 
 
-const char* ssid = "0024A5C6D897";
-const char* password = "u5rr1xembpu1c";
+const char* __Ssid = "0024A5C6D897";
+const char* __Password = "u5rr1xembpu1c";
 
+/*const char* __Hostname = "Lichtwecker";*/
+const char* __Hostname = "Weckertest";
 
 Speicher __WZ;
 Sonnenaufgang __SA;
@@ -52,16 +53,17 @@ void setup() {
   Serial.println(" SA_Objekt");
 
   // Wifi
+  WiFi.hostname(__Hostname);
   WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, password);
+  WiFi.begin(__Ssid, __Password);
   while (WiFi.waitForConnectResult() != WL_CONNECTED) {
     Serial.println("Keine Wifi-Verbindung! Neustart in 5 Sekunden...");
     delay(5000);
     ESP.restart();
   }
-  Serial.printf(" Wifi %s (IP Address %s)", ssid, WiFi.localIP().toString().c_str());
+  Serial.printf(" Wifi %s (IP Address %s)", __Ssid, WiFi.localIP().toString().c_str());
 
-  if (MDNS.begin("Lichtwecker")) {
+  if (MDNS.begin(__Hostname)) {
     Serial.print(" MDNS responder");
   }
 

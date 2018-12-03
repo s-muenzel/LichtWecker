@@ -3,9 +3,12 @@
 #include "Sonnenaufgang.h"
 #include "Speicher.h"
 
+#include <FS.h>
 #include <ESP8266WebServer.h>
 
 ESP8266WebServer server(80);
+
+File fsUploadFile;
 
 
 void handleRoot() {
@@ -248,8 +251,36 @@ void handleLokaleZeit() {
   server.send(200, "text/html", temp);
 }
 
-void handleFavIcon() {
+/*void handleFavIcon() {
   server.send(404, "text/plain", "no favicon");
+  }*/
+
+
+void handleFavIcon() {
+  Serial.println("/favicon.ico");
+  File file = SPIFFS.open("/favicon.ico", "r"); // FILE_READ ); // "rb"
+  if (!file) { // isDir geht wohl nur auf ESP32 || file.isDirectory()) {
+    Serial.println(" Verzeichnis?");
+    server.send(404, "text/plain", "failed to open favicon.ico");
+    return;
+  }
+
+  uint8_t buf[512]; // mehr als nötig:
+  uint16_t size = file.size();
+  Serial.print(" FavIcon size=");
+  Serial.println(size);
+  if (size < 512) {
+    size = file.read(buf, size);
+    Serial.print(" FavIcon gelesen=");
+    Serial.println(size);
+    WiFiClient client = server.client();
+    client.write( buf, size );
+    server.send ( 200, "image/x-icon", "" );
+    file.close();
+    return;
+  }
+  Serial.println(" nicht gefunden");
+  server.send(404, "text/plain", "read favicon.ico failed");
 }
 
 void handleNotFound() {
@@ -269,11 +300,203 @@ void handleNotFound() {
   server.send(404, "text/plain", message);
 }
 
+/////////
+//format bytes
+String formatBytes(size_t bytes) {
+  if (bytes < 1024) {
+    return String(bytes) + "B";
+  } else if (bytes < (1024 * 1024)) {
+    return String(bytes / 1024.0) + "KB";
+  } else if (bytes < (1024 * 1024 * 1024)) {
+    return String(bytes / 1024.0 / 1024.0) + "MB";
+  } else {
+    return String(bytes / 1024.0 / 1024.0 / 1024.0) + "GB";
+  }
+}
+
+String getContentType(String filename) {
+  if (server.hasArg("download")) {
+    return "application/octet-stream";
+  } else if (filename.endsWith(".htm")) {
+    return "text/html";
+  } else if (filename.endsWith(".html")) {
+    return "text/html";
+  } else if (filename.endsWith(".css")) {
+    return "text/css";
+  } else if (filename.endsWith(".js")) {
+    return "application/javascript";
+  } else if (filename.endsWith(".png")) {
+    return "image/png";
+  } else if (filename.endsWith(".gif")) {
+    return "image/gif";
+  } else if (filename.endsWith(".jpg")) {
+    return "image/jpeg";
+  } else if (filename.endsWith(".ico")) {
+    return "image/x-icon";
+  } else if (filename.endsWith(".xml")) {
+    return "text/xml";
+  } else if (filename.endsWith(".pdf")) {
+    return "application/x-pdf";
+  } else if (filename.endsWith(".zip")) {
+    return "application/x-zip";
+  } else if (filename.endsWith(".gz")) {
+    return "application/x-gzip";
+  }
+  return "text/plain";
+}
+
+bool handleFileRead(String path) {
+  Serial.println("handleFileRead: " + path);
+  if (path.endsWith("/")) {
+    path += "index.htm";
+  }
+  String contentType = getContentType(path);
+  String pathWithGz = path + ".gz";
+  if (SPIFFS.exists(pathWithGz) || SPIFFS.exists(path)) {
+    if (SPIFFS.exists(pathWithGz)) {
+      path += ".gz";
+    }
+    File file = SPIFFS.open(path, "r");
+    server.streamFile(file, contentType);
+    file.close();
+    return true;
+  }
+  return false;
+  }
+
+void handleFileUpload() {
+  if (server.uri() != "/edit") {
+    return;
+  }
+  HTTPUpload& upload = server.upload();
+  if (upload.status == UPLOAD_FILE_START) {
+    String filename = upload.filename;
+    if (!filename.startsWith("/")) {
+      filename = "/" + filename;
+    }
+    Serial.print("handleFileUpload Name: "); Serial.println(filename);
+    fsUploadFile = SPIFFS.open(filename, "w");
+    filename = String();
+  } else if (upload.status == UPLOAD_FILE_WRITE) {
+    //Serial.print("handleFileUpload Data: "); Serial.println(upload.currentSize);
+    if (fsUploadFile) {
+      fsUploadFile.write(upload.buf, upload.currentSize);
+    }
+  } else if (upload.status == UPLOAD_FILE_END) {
+    if (fsUploadFile) {
+      fsUploadFile.close();
+    }
+    Serial.print("handleFileUpload Size: "); Serial.println(upload.totalSize);
+  }
+}
+
+void handleFileDelete() {
+  if (server.args() == 0) {
+    return server.send(500, "text/plain", "BAD ARGS");
+  }
+  String path = server.arg(0);
+  Serial.println("handleFileDelete: " + path);
+  if (path == "/") {
+    return server.send(500, "text/plain", "BAD PATH");
+  }
+  if (!SPIFFS.exists(path)) {
+    return server.send(404, "text/plain", "FileNotFound");
+  }
+  SPIFFS.remove(path);
+  server.send(200, "text/plain", "");
+  path = String();
+}
+
+void handleFileCreate() {
+  if (server.args() == 0) {
+    return server.send(500, "text/plain", "BAD ARGS");
+  }
+  String path = server.arg(0);
+  Serial.println("handleFileCreate: " + path);
+  if (path == "/") {
+    return server.send(500, "text/plain", "BAD PATH");
+  }
+  if (SPIFFS.exists(path)) {
+    return server.send(500, "text/plain", "FILE EXISTS");
+  }
+  File file = SPIFFS.open(path, "w");
+  if (file) {
+    file.close();
+  } else {
+    return server.send(500, "text/plain", "CREATE FAILED");
+  }
+  server.send(200, "text/plain", "");
+  path = String();
+}
+
+void handleFileList() {
+  if (!server.hasArg("dir")) {
+    server.send(500, "text/plain", "BAD ARGS");
+    return;
+  }
+
+  String path = server.arg("dir");
+  Serial.println("handleFileList: " + path);
+  Dir dir = SPIFFS.openDir(path);
+  path = String();
+
+  String output = "[";
+  while (dir.next()) {
+    File entry = dir.openFile("r");
+    if (output != "[") {
+      output += ',';
+    }
+    bool isDir = false;
+    output += "{\"type\":\"";
+    output += (isDir) ? "dir" : "file";
+    output += "\",\"name\":\"";
+    output += String(entry.name()).substring(1);
+    output += "\"}";
+    entry.close();
+  }
+
+  output += "]";
+  server.send(200, "text/json", output);
+}
+
+void handleUpload() {
+  Serial.println("Seite handleUpload");
+
+  WiFiClient client = server.client();
+  char msg1[] = "<html><head></head><body><form action='/edit' method='post' enctype='multipart/form-data'><input type='file' name='name'><input class='button' type='submit' value='Upload'></form>";
+  client.write( msg1, strlen(msg1) );
+
+  Dir dir = SPIFFS.openDir("/");
+
+  while (dir.next()) {
+    File entry = dir.openFile("r");
+
+    String output = String("<form action='/edit' method='delete'><input class='button' type='submit' value='") + entry.name() + String("'></form>");
+    client.write( output.c_str(), strlen(output.c_str()) );
+    entry.close();
+  }
+  char msg2[] = "</body>";
+  server.send(200, "text/html", msg2);
+}
+///////////
 
 WebS::WebS() {
 }
 
 void WebS::Beginn() {
+  if (!SPIFFS.begin()) {
+    Serial.println("Failed to mount file system");
+  }
+  {
+    Dir dir = SPIFFS.openDir("/");
+    while (dir.next()) {
+      String fileName = dir.fileName();
+      size_t fileSize = dir.fileSize();
+      Serial.printf("FS File: %s, size: %s\n", fileName.c_str(), formatBytes(fileSize).c_str());
+    }
+    Serial.printf("\n");
+  }
+
   server.on("/", handleRoot); // Anzeige Weckzeiten und Möglichkeit Weckzeiten zu setzen. Auch Link zu Konfig
   server.on("/StartStop", handleStartStop); // nur noch zu Testzwecken
   server.on("/Setze_WZ", handleSetzeWeckzeit); // Speichert die neuen Weckzeiten ab
@@ -282,9 +505,30 @@ void WebS::Beginn() {
   server.on("/LokaleZeit", handleLokaleZeit); // zeigt "nur" die aktuelle lokale Zeit an
   server.on("/favicon.ico", handleFavIcon); // dummy
   server.onNotFound(handleNotFound);
+
+  //SERVER INIT
+  //list directory
+  server.on("/list", HTTP_GET, handleFileList);
+  //load editor
+  server.on("/edit", HTTP_GET, []() {
+    if (!handleFileRead("/edit.htm")) {
+      server.send(404, "text/plain", "FileNotFound");
+    }
+  });
+  server.on("/upload", handleUpload);
+  //create file
+  server.on("/edit", HTTP_PUT, handleFileCreate);
+  //delete file
+  server.on("/edit", HTTP_DELETE, handleFileDelete);
+  //first callback is called after the request has ended with all parsed arguments
+  //second callback handles file uploads at that location
+  server.on("/edit", HTTP_POST, []() {
+    server.send(200, "text/plain", "");
+  }, handleFileUpload);
+
   server.begin();
 }
 
 void WebS::Tick() {
-	server.handleClient();
+  server.handleClient();
 }
