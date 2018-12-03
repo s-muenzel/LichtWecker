@@ -97,20 +97,6 @@ uint32_t Sonnenaufgang::Lichtfarbe(float t, float x) {
   uint8_t _g;
   uint8_t _b;
   HSV_to_RGB(_h, _s, _v, &_r, &_g, &_b);
-  /*  static float _deb_zeit = 0;
-    if (t > _deb_zeit) {
-      _deb_zeit = t;
-      Serial.print(" t="); Serial.print(t);
-      Serial.print(" x="); Serial.print(x);
-      Serial.print(" h/s/v=");
-      Serial.print(_h); Serial.print("/");
-      Serial.print(_s); Serial.print("/");
-      Serial.print(_v);
-      Serial.print(" r/g/b=");
-      Serial.print(_r); Serial.print("/");
-      Serial.print(_g); Serial.print("/");
-      Serial.print(_b); Serial.println("");
-    }*/
   return __strip.Color(_r, _g, _b);
 }
 
@@ -142,7 +128,7 @@ void Sonnenaufgang::Start() {
   if (!_status_Relais) {
     Serial.printf("RELAIS AN");
     digitalWrite(RELAIS_PIN, HIGH);
-    delay(50); // mal kurz warten, damit das Relais auch sicher angezogen hat
+    delay(100); // mal kurz warten, damit das Relais auch sicher angezogen hat
     _status_Relais = true;
   }
   _Nachlaufzeit = round(_konfig_nachleuchten * 1000);
@@ -178,7 +164,7 @@ void Sonnenaufgang::Nachricht(Farb_t farbe, Dauer_t dauer, uint8_t prozent) {
   if (!_status_Relais) {
     Serial.printf("RELAIS AN");
     digitalWrite(RELAIS_PIN, HIGH);
-    delay(50); // mal kurz warten, damit das Relais auch sicher angezogen hat
+    delay(100); // mal kurz warten, damit das Relais auch sicher angezogen hat
     _status_Relais = true;
   }
   _Nachlaufzeit = 0;
