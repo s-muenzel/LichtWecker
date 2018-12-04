@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<style>
+h1 {
+	text-shadow: 1px 1px grey;
+}
+ul {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background-color: #0f0f0f;
+    border: none;
+}
+li {
+    float: left;
+}
+li button {
+    display: block;
+    color: white;
+    background-color: #0f0f0f;
+    text-align: center;
+    padding: 14px 16px;
+    text-decoration: none;
+    border: none;
+}
+li button:hover {
+ color: #aaa;
+}
+</style>
+<head>
+<title>Lichtwecker</title>
+</head>
+<body onload="Inhalt(0,'WeckZeiten.htm')">
+	<h1>Lichtwecker</h1>
+<ul>
+  <li><button  id="html" type="button" onclick="Inhalt(0,'WeckZeiten.htm')" style="background-color: #ccc">
+		Weckzeiten</button></li>
+  <li><button id="js" type="button" onclick="Inhalt(1,'Konfig.htm')">
+		Konfiguration</button></li>
+  <li><button id="css" type="button" onclick="Inhalt(2,'dateien.htm')">
+		Dateien</button></li>
+  <li><button id="sql" type="button" onclick="Inhalt(3,'/StartStop')">
+		Test</button></li>
+</ul>
+  <div> 
+    <iframe src='WeckZeiten.htm' style='border:none;width:100%;height:31em' id='Inhalt'>inhalt</iframe>
+  </div>
+  <div id="Uhrzeit" style="float:right">
+<script>
+
+function Inhalt(n,Ziel) {
+document.getElementById('Inhalt').src = Ziel;
+var p_elemente = document.getElementsByTagName("button");
+  for (i = 0; i < p_elemente.length; i++) {
+      if(i == n) {
+          p_elemente[i].style.backgroundColor = "#ccc";
+      } else {
+          p_elemente[i].style.backgroundColor = "#0f0f0f";
+      }
+  }
+}
+var myVar = setInterval(ladeUhrzeit, 1000);
+var xhttp = new XMLHttpRequest();
+var Uhr = document.getElementById("Uhrzeit");
+function ladeUhrzeit() {
+  xhttp.onreadystatechange = function() {
+    if (this.readyState == 4 && this.status == 200) {
+      Uhr.innerHTML = this.responseText;
+    } else {
+      Uhr.innerHTML = "fail";
+	}
+  };
+  xhttp.open("GET", "uhrzeit.txt", true);
+  xhttp.send();
+}
+</script>
+</body>
+</html>

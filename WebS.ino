@@ -12,6 +12,9 @@ File fsUploadFile;
 
 
 void handleRoot() {
+}
+
+void handleWZ () {
   char temp[2000];
   time_t t = now(); // Store the current time in time
   time_t w[7];
@@ -251,15 +254,10 @@ void handleLokaleZeit() {
   server.send(200, "text/html", temp);
 }
 
-/*void handleFavIcon() {
-  server.send(404, "text/plain", "no favicon");
-  }*/
-
-
 void handleFavIcon() {
   Serial.println("/favicon.ico");
-  File file = SPIFFS.open("/favicon.ico", "r"); // FILE_READ ); // "rb"
-  if (!file) { // isDir geht wohl nur auf ESP32 || file.isDirectory()) {
+  File file = SPIFFS.open("/favicon.ico", "r");
+  if (!file) {
     Serial.println(" Verzeichnis?");
     server.send(404, "text/plain", "failed to open favicon.ico");
     return;
@@ -407,7 +405,7 @@ void handleFileDelete() {
   path = String();
 }
 
-void handleFileCreate() {
+/*void handleFileCreate() {
   if (server.args() == 0) {
     return server.send(500, "text/plain", "BAD ARGS");
   }
@@ -427,60 +425,26 @@ void handleFileCreate() {
   }
   server.send(200, "text/plain", "");
   path = String();
-}
+}*/
 
-void handleFileList() {
-  if (!server.hasArg("dir")) {
-    server.send(500, "text/plain", "BAD ARGS");
-    return;
-  }
+void handleDateien() {
+  Serial.println("Seite handleDateien");
 
-  String path = server.arg("dir");
-  Serial.println("handleFileList: " + path);
-  Dir dir = SPIFFS.openDir(path);
-  path = String();
-
-  String output = "[";
-  while (dir.next()) {
-    File entry = dir.openFile("r");
-    if (output != "[") {
-      output += ',';
-    }
-    bool isDir = false;
-    output += "{\"type\":\"";
-    output += (isDir) ? "dir" : "file";
-    output += "\",\"name\":\"";
-    output += String(entry.name()).substring(1);
-    output += "\",\"size\":\"";
-    output += String(entry.size());
-    output += "\"}";
-    entry.close();
-  }
-
-  output += "]";
-  server.send(200, "text/json", output);
-}
-
-void handleUpload() {
-  Serial.println("Seite handleUpload");
-
-//  WiFiClient client = server.client();
   String output;
-  output = "<html><head></head><body><form action='/edit' method='post' enctype='multipart/form-data'><input type='file' name='name'><input class='button' type='submit' value='Upload'></form>";
-//  client.write( msg1, strlen(msg1) );
+  output = "<html><head><link rel='stylesheet' type='text/css' href='style.css'></head>\
+  <form action='/edit' method='post' enctype='multipart/form-data'>\
+  <span><div class="Tag"><input type='file' name='name'><input class='button' type='submit' value='Upload'></div></span></form><span>";
 
   Dir dir = SPIFFS.openDir("/");
-
   while (dir.next()) {
     File entry = dir.openFile("r");
-
-    output += String("<form action='/edit' method='delete'><input class='button' type='submit' value='") + entry.name() + String("'></form>");
-//    client.write( output.c_str(), strlen(output.c_str()) );
+    output += String("<div class="Tag"><form action='/edit' method='delete'><input class='button' type='submit' value='") + entry.name() + String("'></form></div>");
     entry.close();
   }
-  output += "</body>";
+  output += "</span></body></html>";
   server.send(200, "text/html", output);
 }
+
 ///////////
 
 WebS::WebS() {
@@ -500,7 +464,8 @@ void WebS::Beginn() {
     Serial.printf("\n");
   }
 
-  server.on("/", handleRoot); // Anzeige Weckzeiten und Möglichkeit Weckzeiten zu setzen. Auch Link zu Konfig
+  server.on("/", handleRoot); // Top-Seite mit Hauptnavigation
+  server.on("/WeckZeiten", handleWZ); // Anzeige Weckzeiten und Möglichkeit Weckzeiten zu setzen
   server.on("/StartStop", handleStartStop); // nur noch zu Testzwecken
   server.on("/Setze_WZ", handleSetzeWeckzeit); // Speichert die neuen Weckzeiten ab
   server.on("/Konfig", handleKonfig); // Zeigt die Konfig-Daten an
@@ -509,18 +474,16 @@ void WebS::Beginn() {
   server.on("/favicon.ico", handleFavIcon); // dummy
   server.onNotFound(handleNotFound);
 
-  //SERVER INIT
-  //list directory
-  server.on("/list", HTTP_GET, handleFileList);
+  // Handling von Dateien (Upload, Delete)
+  server.on("/Dateien", handleDateien);
   //load editor
   server.on("/edit", HTTP_GET, []() {
     if (!handleFileRead("/edit.htm")) {
       server.send(404, "text/plain", "FileNotFound");
     }
   });
-  server.on("/upload", handleUpload);
   //create file
-  server.on("/edit", HTTP_PUT, handleFileCreate);
+/*  server.on("/edit", HTTP_PUT, handleFileCreate);*/
   //delete file
   server.on("/edit", HTTP_DELETE, handleFileDelete);
   //first callback is called after the request has ended with all parsed arguments
