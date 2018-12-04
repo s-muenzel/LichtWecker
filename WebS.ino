@@ -12,9 +12,28 @@ File fsUploadFile;
 
 
 void handleRoot() {
+  Serial.println("handleRoot");
+  if (SPIFFS.exists("/top.htm")) {
+    File file = SPIFFS.open("/top.htm", "r");
+    server.streamFile(file, "text/html");
+    file.close();
+  } else {
+    server.send(404, "text/plain", "file error");
+  }
 }
 
-void handleWZ () {
+void handleCSS() {
+  Serial.println("handleCSS");
+  if (SPIFFS.exists("/style.css")) {
+    File file = SPIFFS.open("/style.css", "r");
+    server.streamFile(file, "text/css");
+    file.close();
+  } else {
+    server.send(404, "text/plain", "file error");
+  }
+}
+
+void handleWeckzeit() {
   char temp[2000];
   time_t t = now(); // Store the current time in time
   time_t w[7];
@@ -25,21 +44,16 @@ void handleWZ () {
   }
   Serial.printf("Webaufruf / um %2d:%02d:%02d\n", hour(t), minute(t), second(t));
   snprintf(temp, 2000,
-           "<html><head><title>Lichtwecker</title></head>\
-<body><h1>Lichtwecker</h1><p>Zeit: <iframe src='/LokaleZeit' style='border:none;height:26px;width:100px;' name='LokaleZeit'>%2d:%02d:%02d</iframe></p>\n\
-<form action='/Setze_WZ' method='POST'><table>\
-<tr><th>Wecker an</th><th></th><th><input type='checkbox' name='Aktiv' %s></th></tr>\
-<tr><td>Montag</td><td><input type='time' name='Mo' value='%02d:%02d'></td><td><input type='checkbox' name='AnMo' %s></td></tr>\
-<tr><td>Dienstag</td><td><input type='time' name='Di' value='%02d:%02d'></td><td><input type='checkbox' name='AnDi' %s></td></tr>\
-<tr><td>Mittwoch</td><td><input type='time' name='Mi' value='%02d:%02d'></td><td><input type='checkbox' name='AnMi' %s></td></tr>\
-<tr><td>Donnerstag</td><td><input type='time' name='Do' value='%02d:%02d'></td><td><input type='checkbox' name='AnDo' %s></td></tr>\
-<tr><td>Freitag</td><td><input type='time' name='Fr' value='%02d:%02d'></td><td><input type='checkbox' name='AnFr' %s></td></tr>\
-<tr><td>Samstag</td><td><input type='time' name='Sa' value='%02d:%02d'></td><td><input type='checkbox' name='AnSa' %s></td></tr>\
-<tr><td>Sonntag</td><td><input type='time' name='So' value='%02d:%02d'></td><td><input type='checkbox' name='AnSo' %s></td></tr>\
-<tr><td></td><td></td><td><input type='submit' name='ok' value='ok'></td></tr></table></form>\
-<form action='/StartStop' method='POST'>Jetzt testen<input type='submit' name='Schalten' value='%s'></form>\
-</html>",
-           hour(t), minute(t), second(t),
+           "<html><head><link rel='stylesheet' type='text/css' href='style.css'></head>\
+<body><form action='/Setze_WZ' method='POST'><span><div class='Tag'>Wecker an <input type='checkbox' name='Aktiv' %s></div><hr>\
+<div class='Tag'><div>Montag</div><input type='time' name='Mo' value='%02d:%02d'><input type='checkbox' name='AnMo' %s></div>\
+<div class='Tag'><div>Dienstag</div><input type='time' name='Di' value='%02d:%02d'><input type='checkbox' name='AnDi' %s></div>\
+<div class='Tag'><div>Mittwoch</div><input type='time' name='Mi' value='%02d:%02d'><input type='checkbox' name='AnMi' %s></div>\
+<div class='Tag'><div>Donnerstag</div><input type='time' name='Do' value='%02d:%02d'><input type='checkbox' name='AnDo' %s></div>\
+<div class='Tag'><div>Freitag</div><input type='time' name='Fr' value='%02d:%02d'><input type='checkbox' name='AnFr' %s></div>\
+<div class='Tag'><div>Samstag</div><input type='time' name='Sa' value='%02d:%02d'><input type='checkbox' name='AnSa' %s></div>\
+<div class='Tag'><div>Sonntag</div><input type='time' name='So' value='%02d:%02d'><input type='checkbox' name='AnSo' %s></div>\
+</span><span><input type='submit' name='ok' value='ok'></span></form></body></html>",
            __WZ.Wecker_Aktiv() ? "checked" : "",
            hour(w[2]), minute(w[2]), a[2] ? "checked" : "",
            hour(w[3]), minute(w[3]), a[3] ? "checked" : "",
@@ -47,8 +61,7 @@ void handleWZ () {
            hour(w[5]), minute(w[5]), a[5] ? "checked" : "",
            hour(w[6]), minute(w[6]), a[6] ? "checked" : "",
            hour(w[0]), minute(w[0]), a[0] ? "checked" : "",
-           hour(w[1]), minute(w[1]), a[1] ? "checked" : "",
-           __SA.Laeuft() ? "stop" : "start"
+           hour(w[1]), minute(w[1]), a[1] ? "checked" : ""
           );
   server.send(200, "text/html", temp);
 }
@@ -166,8 +179,8 @@ void handleSetzeWeckzeit() {
     }
   }
   __WZ.speichern();
-  server.sendHeader("Location", "/");
-  server.send(303, "text/html", "Location:/");
+  server.sendHeader("Location", "/WeckZeit");
+  server.send(303, "text/html", "Location:/WeckZeit");
 }
 
 void handleKonfig() {
@@ -175,16 +188,14 @@ void handleKonfig() {
   time_t t = now(); // Store the current time in time
   Serial.printf("Webaufruf /Konfig um %2d:%02d:%02d\n", hour(t), minute(t), second(t));
   snprintf(temp, 2000,
-           "<html><head><title>Lichtwecker</title></head>\
-<body><h1>Lichtwecker</h1><h2>Konfiguration</h2>\n\
-<form action='/Setze_Konfig' method='POST'><table>\
-<tr><td>Laenge</td><td><input type='number' min='0.5' max='2.0' step='0.1'  name='L' value='%f'></td></tr>\
-<tr><td>Geschwindigkeit</td><td><input type='number' min='0.01' max='1.0' step='0.01' name='V' value='%f'></td></tr>\
-<tr><td>Dauer Aufgang</td><td><input type='number' min='10' max='600' step='1' name='D' value='%f'></td></tr>\
-<tr><td>Dauer Hell</td><td><input type='number' min='2' max='600' step='1'  name='N' value='%f'></td></tr>\
-<tr><td>Snooze-Zeit</td><td><input type='number' min='10' max='900' step='1'  name='S' value='%f'></td></tr>\
-<tr><td></td><td></td><td><input type='submit' name='ok' value='ok'></td></tr></table></form>\
-</html>",
+           "<html><head><link rel='stylesheet' type='text/css' href='style.css'></head>\
+<body><form action='/Setze_Konfig' method='POST'><span>\
+<div class='Tag'>L&auml;nge<input type='number' min='0.5' max='2.0' step='0.1'  name='L' value='%f'></div>\
+<div class='Tag'>Geschwindigkeit<input type='number' min='0.01' max='1.0' step='0.01' name='V' value='%f'></div>\
+<div class='Tag'>Dauer Aufgang<input type='number' min='10' max='600' step='1' name='D' value='%f'></div>\
+<div class='Tag'>Dauer Hell<input type='number' min='2' max='600' step='1'  name='N' value='%f'></div>\
+<div class='Tag'>Snooze-Zeit<input type='number' min='10' max='900' step='1'  name='S' value='%f'></div>\
+</span><span><input type='submit' name='ok' value='ok'></form></span></body></html>",
            __WZ.lese_SA_laenge(),
            __WZ.lese_SA_v(),
            __WZ.lese_SA_dauer(),
@@ -227,8 +238,8 @@ void handleSetzeKonfig() {
     }
   }
   __WZ.speichern();
-  server.sendHeader("Location", "/");
-  server.send(303, "text/html", "Location:/");
+  server.sendHeader("Location", "/Konfig");
+  server.send(303, "text/html", "Location:/Konfig");
 }
 
 void handleLokaleZeit() {
@@ -247,7 +258,6 @@ void handleLokaleZeit() {
       strncpy(style, "color:black;", 59);
       break;
   }
-  //  Serial.printf("Webaufruf /LokaleZeit um %2d:%02d:%02d\n", hour(t), minute(t), second(t));
   snprintf(temp, 1000,
            "<html><head><meta http-equiv='refresh' content='10'/></head><body style='%s'>%2d:%02d:%02d</body></html>",
            style, hour(t), minute(t), second(t));
@@ -256,8 +266,8 @@ void handleLokaleZeit() {
 
 void handleFavIcon() {
   Serial.println("/favicon.ico");
-  File file = SPIFFS.open("/favicon.ico", "r");
-  if (!file) {
+  File file = SPIFFS.open("/favicon.ico", "r"); // FILE_READ ); // "rb"
+  if (!file) { // isDir geht wohl nur auf ESP32 || file.isDirectory()) {
     Serial.println(" Verzeichnis?");
     server.send(404, "text/plain", "failed to open favicon.ico");
     return;
@@ -265,8 +275,6 @@ void handleFavIcon() {
 
   uint8_t buf[512]; // mehr als nötig:
   uint16_t size = file.size();
-  Serial.print(" FavIcon size=");
-  Serial.println(size);
   if (size < 512) {
     size = file.read(buf, size);
     Serial.print(" FavIcon gelesen=");
@@ -312,56 +320,6 @@ String formatBytes(size_t bytes) {
   }
 }
 
-String getContentType(String filename) {
-  if (server.hasArg("download")) {
-    return "application/octet-stream";
-  } else if (filename.endsWith(".htm")) {
-    return "text/html";
-  } else if (filename.endsWith(".html")) {
-    return "text/html";
-  } else if (filename.endsWith(".css")) {
-    return "text/css";
-  } else if (filename.endsWith(".js")) {
-    return "application/javascript";
-  } else if (filename.endsWith(".png")) {
-    return "image/png";
-  } else if (filename.endsWith(".gif")) {
-    return "image/gif";
-  } else if (filename.endsWith(".jpg")) {
-    return "image/jpeg";
-  } else if (filename.endsWith(".ico")) {
-    return "image/x-icon";
-  } else if (filename.endsWith(".xml")) {
-    return "text/xml";
-  } else if (filename.endsWith(".pdf")) {
-    return "application/x-pdf";
-  } else if (filename.endsWith(".zip")) {
-    return "application/x-zip";
-  } else if (filename.endsWith(".gz")) {
-    return "application/x-gzip";
-  }
-  return "text/plain";
-}
-
-bool handleFileRead(String path) {
-  Serial.println("handleFileRead: " + path);
-  if (path.endsWith("/")) {
-    path += "index.htm";
-  }
-  String contentType = getContentType(path);
-  String pathWithGz = path + ".gz";
-  if (SPIFFS.exists(pathWithGz) || SPIFFS.exists(path)) {
-    if (SPIFFS.exists(pathWithGz)) {
-      path += ".gz";
-    }
-    File file = SPIFFS.open(path, "r");
-    server.streamFile(file, contentType);
-    file.close();
-    return true;
-  }
-  return false;
-  }
-
 void handleFileUpload() {
   if (server.uri() != "/edit") {
     return;
@@ -389,7 +347,7 @@ void handleFileUpload() {
 }
 
 void handleFileDelete() {
-  if (server.args() == 0) {
+  if ((server.args() == 0) || (server.argName(0) != "datei")){
     return server.send(500, "text/plain", "BAD ARGS");
   }
   String path = server.arg(0);
@@ -401,50 +359,33 @@ void handleFileDelete() {
     return server.send(404, "text/plain", "FileNotFound");
   }
   SPIFFS.remove(path);
-  server.send(200, "text/plain", "");
+  server.sendHeader("Location", "/Dateien");
+  server.send(303, "text/html", "Location:/Dateien");
+//  server.send(200, "text/plain", "");
   path = String();
 }
 
-/*void handleFileCreate() {
-  if (server.args() == 0) {
-    return server.send(500, "text/plain", "BAD ARGS");
-  }
-  String path = server.arg(0);
-  Serial.println("handleFileCreate: " + path);
-  if (path == "/") {
-    return server.send(500, "text/plain", "BAD PATH");
-  }
-  if (SPIFFS.exists(path)) {
-    return server.send(500, "text/plain", "FILE EXISTS");
-  }
-  File file = SPIFFS.open(path, "w");
-  if (file) {
-    file.close();
-  } else {
-    return server.send(500, "text/plain", "CREATE FAILED");
-  }
-  server.send(200, "text/plain", "");
-  path = String();
-}*/
 
-void handleDateien() {
-  Serial.println("Seite handleDateien");
+void handleUpload() {
+  Serial.println("Seite handleUpload");
 
+  //  WiFiClient client = server.client();
   String output;
-  output = "<html><head><link rel='stylesheet' type='text/css' href='style.css'></head>\
-  <form action='/edit' method='post' enctype='multipart/form-data'>\
-  <span><div class="Tag"><input type='file' name='name'><input class='button' type='submit' value='Upload'></div></span></form><span>";
+  output = "<html><head><link rel='stylesheet' type='text/css' href='style.css'></head><body>\
+<form action='/edit' method='post' enctype='multipart/form-data'><span><div class='Tag'><input type='file' name='name'></div></span><span><input class='button' type='submit' value='Upload'></span></form>";
 
   Dir dir = SPIFFS.openDir("/");
   while (dir.next()) {
     File entry = dir.openFile("r");
-    output += String("<div class="Tag"><form action='/edit' method='delete'><input class='button' type='submit' value='") + entry.name() + String("'></form></div>");
+    output += String("<form action='/delete' method='post'><span><div class='Tag'><span>");
+    output += entry.name() + String("</span><span>") + entry.size();
+    output += String("</span><input type='text' style='display:none' name='datei' value='") + entry.name();
+    output += String("'></div></span><span><input class='button' type='submit' value='l&ouml;schen'></span></form>");
     entry.close();
   }
-  output += "</span></body></html>";
+  output += "</body></html>";
   server.send(200, "text/html", output);
 }
-
 ///////////
 
 WebS::WebS() {
@@ -464,32 +405,28 @@ void WebS::Beginn() {
     Serial.printf("\n");
   }
 
-  server.on("/", handleRoot); // Top-Seite mit Hauptnavigation
-  server.on("/WeckZeiten", handleWZ); // Anzeige Weckzeiten und Möglichkeit Weckzeiten zu setzen
+  server.on("/", handleRoot); // Anzeige Weckzeiten und Möglichkeit Weckzeiten zu setzen. Auch Link zu Konfig
+  server.on("/WeckZeit", handleWeckzeit); // Anzeige Weckzeiten und Möglichkeit Weckzeiten zu setzen. Auch Link zu Konfig
   server.on("/StartStop", handleStartStop); // nur noch zu Testzwecken
   server.on("/Setze_WZ", handleSetzeWeckzeit); // Speichert die neuen Weckzeiten ab
   server.on("/Konfig", handleKonfig); // Zeigt die Konfig-Daten an
   server.on("/Setze_Konfig", handleSetzeKonfig); // Speichert die neuen Weckzeiten ab
   server.on("/LokaleZeit", handleLokaleZeit); // zeigt "nur" die aktuelle lokale Zeit an
-  server.on("/favicon.ico", handleFavIcon); // dummy
+  server.on("/favicon.ico", handleFavIcon); // ...
+  server.on("/style.css", handleCSS); // ..
   server.onNotFound(handleNotFound);
 
-  // Handling von Dateien (Upload, Delete)
-  server.on("/Dateien", handleDateien);
-  //load editor
-  server.on("/edit", HTTP_GET, []() {
-    if (!handleFileRead("/edit.htm")) {
-      server.send(404, "text/plain", "FileNotFound");
-    }
-  });
+  server.on("/Dateien", handleUpload);
   //create file
-/*  server.on("/edit", HTTP_PUT, handleFileCreate);*/
+  //  server.on("/edit", HTTP_PUT, handleFileCreate);
   //delete file
-  server.on("/edit", HTTP_DELETE, handleFileDelete);
+  server.on("/delete", handleFileDelete); // 2.arg: HTTP_POST, 
   //first callback is called after the request has ended with all parsed arguments
   //second callback handles file uploads at that location
   server.on("/edit", HTTP_POST, []() {
-    server.send(200, "text/plain", "");
+  server.sendHeader("Location", "/Dateien");
+  server.send(303, "text/html", "Location:/Dateien");
+//    server.send(200, "text/plain", "");
   }, handleFileUpload);
 
   server.begin();
