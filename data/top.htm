@@ -29,26 +29,45 @@ li button:hover {
 }
 </style>
 <head>
+<meta charset="UTF-8">
 <title>Lichtwecker</title>
 <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css" integrity="sha384-B4dIYHKNBt8Bc12p+WXckhzcICo0wtJAoU8YZTY5qE0Id1GSseTk6S+L3BlXeVIU" crossorigin="anonymous"></head>
-<body onload="Inhalt(0,'/WeckZeit')">
+<body onload="Init()">
 	<h1>Lichtwecker</h1>
 <ul>
   <li><button  id="html" type="button" onclick="Inhalt(0,'/WeckZeit')" style="background-color: #ccc">
 		Weckzeiten</button></li>
   <li><button id="js" type="button" onclick="Inhalt(1,'/Konfig')">
-		<i class="fas fa-lock"></i> Konfiguration</button></li>
+		<span class="Schloss-zu"><i class="fas fa-lock"></i></span>
+		<span class="Schloss-auf"><i class="fas fa-lock-open"></i></span>
+		Konfiguration</button></li>
   <li><button id="css" type="button" onclick="Inhalt(2,'/Dateien')">
-		<i class="fas fa-lock"> </i> Dateien</button></li>
+		<div class="Schloss-zu"><i class="fas fa-lock"></i></div>
+		<div class="Schloss-auf"><i class="fas fa-lock-open"></i></div>
+		Dateien</button></li>
   <li><button id="sql" type="button" onclick="Inhalt(3,'/StartStop')">
-		<i class="fas fa-lock-open"></i> Test</button></li>
+		<div class="Schloss-zu"><i class="fas fa-lock"></i></div>
+		<div class="Schloss-auf"><i class="fas fa-lock-open"></i></div>
+		Test</button></li>
 </ul>
   <div> 
     <iframe src='/WeckZeit' style='border:none;width:100%;height:31em' id='Inhalt'>inhalt</iframe>
   </div>
   <div id="Uhrzeit" style="float:right">
 <script>
-
+var myVar = setInterval(ladeUhrzeit, 1000);
+var xhttp = new XMLHttpRequest();
+var Uhr = document.getElementById("Uhrzeit");
+var SchlossZu = document.getElementsByClassName("Schloss-zu");
+var SchlossAuf = document.getElementsByClassName("Schloss-auf");
+function Init() {
+	Inhalt(0,'/WeckZeit');
+	n = SchlossZu.length;
+	for (i = 0; i < n; i++) {
+	  SchlossZu[i].style.display = "inline";
+	  SchlossAuf[i].style.display = "none";
+	}
+}
 function Inhalt(n,Ziel) {
 document.getElementById('Inhalt').src = Ziel;
 var p_elemente = document.getElementsByTagName("button");
@@ -60,14 +79,25 @@ var p_elemente = document.getElementsByTagName("button");
       }
   }
 }
-var myVar = setInterval(ladeUhrzeit, 1000);
-var xhttp = new XMLHttpRequest();
-var Uhr = document.getElementById("Uhrzeit");
 function ladeUhrzeit() {
   xhttp.onreadystatechange = function() {
     if (this.readyState == 4) {
 		if( this.status == 200) {
-			Uhr.innerHTML = this.responseText;
+			var myObj = JSON.parse(this.responseText);
+			Uhr.innerHTML = myObj.Zeit;
+			if(myObj.Admin == 0) {
+				n = SchlossZu.length;
+				for (i = 0; i < n; i++) {
+				  SchlossZu[i].style.display = "inline";
+				  SchlossAuf[i].style.display = "none";
+				}
+			} else {
+				n = SchlossZu.length;
+				for (i = 0; i < n; i++) {
+				  SchlossZu[i].style.display = "none";
+				  SchlossAuf[i].style.display = "inline";
+				}
+			}
 		} else {
 			Uhr.innerHTML = "fail";
 		}

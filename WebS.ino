@@ -15,13 +15,13 @@ bool __Admin_Mode_An;
 //format bytes
 String formatBytes(size_t bytes) {
   if (bytes < 1024) {
-    return String(bytes) + "B";
+    return String(bytes) + " B";
   } else if (bytes < (1024 * 1024)) {
-    return String(bytes / 1024.0) + "KB";
+    return String(bytes / 1024.0) + " KB";
   } else if (bytes < (1024 * 1024 * 1024)) {
-    return String(bytes / 1024.0 / 1024.0) + "MB";
+    return String(bytes / 1024.0 / 1024.0) + " MB";
   } else {
-    return String(bytes / 1024.0 / 1024.0 / 1024.0) + "GB";
+    return String(bytes / 1024.0 / 1024.0 / 1024.0) + " GB";
   }
 }
 //Stunde aus Text
@@ -67,7 +67,7 @@ void handleWeckzeit() {
   }
   Serial.printf("Webaufruf / um %2d:%02d:%02d\n", hour(t), minute(t), second(t));
   snprintf(temp, 2000,
-           "<html><head><link rel='stylesheet' type='text/css' href='style.css'></head>\
+           "<html><head><meta charset='UTF-8'><link rel='stylesheet' type='text/css' href='style.css'></head>\
 <body><form action='/Setze_WZ' method='POST'><span><div class='Tag'>Wecker an <input type='checkbox' name='Aktiv' %s></div><hr>\
 <div class='Tag'><div>Montag</div><input type='time' name='Mo' value='%02d:%02d'><input type='checkbox' name='AnMo' %s></div>\
 <div class='Tag'><div>Dienstag</div><input type='time' name='Di' value='%02d:%02d'><input type='checkbox' name='AnDi' %s></div>\
@@ -206,7 +206,7 @@ void handleKonfig() {
     time_t t = now(); // Store the current time in time
     Serial.printf("Webaufruf /Konfig um %2d:%02d:%02d\n", hour(t), minute(t), second(t));
     snprintf(temp, 2000,
-             "<html><head><link rel='stylesheet' type='text/css' href='style.css'></head>\
+             "<html><head><meta charset='UTF-8'><link rel='stylesheet' type='text/css' href='style.css'></head>\
 <body><form action='/Setze_Konfig' method='POST'><span>\
 <div class='Tag'>L&auml;nge<input type='number' min='0.5' max='2.0' step='0.1'  name='L' value='%f'></div>\
 <div class='Tag'>Geschwindigkeit<input type='number' min='0.01' max='1.0' step='0.01' name='V' value='%f'></div>\
@@ -226,13 +226,13 @@ void handleKonfig() {
     time_t t = now(); // Store the current time in time
     Serial.printf("Webaufruf /Konfig um %2d:%02d:%02d\n", hour(t), minute(t), second(t));
     snprintf(temp, 2000,
-             "<html><head><link rel='stylesheet' type='text/css' href='style.css'></head>\
+             "<html><head><meta charset='UTF-8'><link rel='stylesheet' type='text/css' href='style.css'></head>\
 <body><span>\
-<div class='Tag'>L&auml;nge: %f></div>\
-<div class='Tag'>Geschwindigkeit: %f></div>\
-<div class='Tag'>Dauer Aufgang: %f></div>\
-<div class='Tag'>Dauer Hell: %f></div>\
-<div class='Tag'>Snooze-Zeit: %f></div>\
+<div class='Tag'>L&auml;nge:<span class='Rechts'>%3.1f m</span></div>\
+<div class='Tag'>Geschwindigkeit:<span class='Rechts'>%4.2f m/s</span></div>\
+<div class='Tag'>Dauer Aufgang:<span class='Rechts'>%4.0f s</span></div>\
+<div class='Tag'>Dauer Hell:<span class='Rechts'>%4.0f s</span></div>\
+<div class='Tag'>Snooze-Zeit:<span class='Rechts'>%4.0f s</span></div>\
 </span><span></span></body></html>",
              __WZ.lese_SA_laenge(),
              __WZ.lese_SA_v(),
@@ -289,23 +289,9 @@ void handleSetzeKonfig() {
 void handleLokaleZeit() {
   char temp[1000];
   time_t t = now(); // Store the current time in time
-  char style[60];
-  switch (timeStatus()) {
-    case timeNotSet:
-      strncpy(style, "color:red;background-color:yellow;", 59);
-      break;
-    case timeNeedsSync:
-      strncpy(style, "color:yellow;", 59);
-      break;
-    case timeSet:
-    default:
-      strncpy(style, "color:black;", 59);
-      break;
-  }
   snprintf(temp, 1000,
-           "<html><head><meta http-equiv='refresh' content='10'/></head><body style='%s'>%2d:%02d:%02d</body></html>",
-           style, hour(t), minute(t), second(t));
-  server.send(200, "text/html", temp);
+           "{ \"Zeit\" : \"%2d:%02d:%02d\", \"ZeitStatus\" : %d, \"Aktiv\" : %d, \"Admin\" : %d}", hour(t), minute(t), second(t), timeStatus(), __SA.Laeuft(), __Admin_Mode_An);
+  server.send(200, "application/json", temp);
 }
 
 void handleFavIcon() {
@@ -317,29 +303,6 @@ void handleFavIcon() {
   } else {
     server.send(404, "text/plain", "file error");
   }
-  /*
-    Serial.println("/favicon.ico");
-    File file = SPIFFS.open("/favicon.ico", "r"); // FILE_READ ); // "rb"
-    if (!file) { // isDir geht wohl nur auf ESP32 || file.isDirectory()) {
-      Serial.println(" Verzeichnis?");
-      server.send(404, "text/plain", "failed to open favicon.ico");
-      return;
-    }
-
-    uint8_t buf[512]; // mehr als nötig:
-    uint16_t size = file.size();
-    if (size < 512) {
-      size = file.read(buf, size);
-      Serial.print(" FavIcon gelesen=");
-      Serial.println(size);
-      WiFiClient client = server.client();
-      client.write( buf, size );
-      server.send ( 200, "image/x-icon", "" );
-      file.close();
-      return;
-    }
-    Serial.println(" nicht gefunden");
-    server.send(404, "text/plain", "read favicon.ico failed"); */
 }
 
 void handleNotFound() {
@@ -359,12 +322,12 @@ void handleNotFound() {
   server.send(404, "text/plain", message);
 }
 
+File fsUploadFile;
 void handleHochladen() {
   if (__Admin_Mode_An) {
     if (server.uri() != "/Hochladen") {
       return;
     }
-    File fsUploadFile;
     HTTPUpload& upload = server.upload();
     if (upload.status == UPLOAD_FILE_START) {
       String filename = upload.filename;
@@ -416,7 +379,7 @@ void handleDateien() {
   Serial.println("Seite handleDateien");
 
   String output;
-  output = "<html><head><link rel='stylesheet' type='text/css' href='style.css'></head><body>";
+  output = "<html><head><meta charset='UTF-8'><link rel='stylesheet' type='text/css' href='style.css'></head><body>";
   if (__Admin_Mode_An) {
     output += String("<form action='/Hochladen' method='post' enctype='multipart/form-data'><span><div class='Tag'><input type='file' name='name'></div></span><span><input class='button' type='submit' value='Upload'></span></form>");
   }
@@ -427,14 +390,15 @@ void handleDateien() {
     if (__Admin_Mode_An) {
       output += String("<form action='/Loeschen' method='post'>");
     }
-    output += String("<div class='Tag'><span>");
-    output += entry.name() + String("</span><span>") + formatBytes(entry.size());
+    output += String("<span><div class='Tag'><span>");
+    output += entry.name() + String("</span><span class='Rechts'>") + formatBytes(entry.size());
     if (__Admin_Mode_An) {
       output += String("</span><input type='text' style='display:none' name='datei' value='") + entry.name();
       output += String("'></div></span><span><input class='button' type='submit' value='l&ouml;schen'></span></form>");
     } else {
       output += String("</span></div>");
     }
+    Serial.printf("File '%s', Size %d\n", entry.name(), entry.size());
     entry.close();
   }
   output += "</body></html>";
