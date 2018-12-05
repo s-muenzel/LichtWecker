@@ -8,7 +8,30 @@
 
 ESP8266WebServer server(80);
 
-File fsUploadFile;
+bool __Admin_Mode_An;
+
+
+///////// Hilfsfunktionen
+//format bytes
+String formatBytes(size_t bytes) {
+  if (bytes < 1024) {
+    return String(bytes) + "B";
+  } else if (bytes < (1024 * 1024)) {
+    return String(bytes / 1024.0) + "KB";
+  } else if (bytes < (1024 * 1024 * 1024)) {
+    return String(bytes / 1024.0 / 1024.0) + "MB";
+  } else {
+    return String(bytes / 1024.0 / 1024.0 / 1024.0) + "GB";
+  }
+}
+//Stunde aus Text
+uint8_t parseZeit_Stunde(String s) {
+  return min(23, max(0, int(s.toInt())));
+}
+//Minute aus Text
+uint8_t parseZeit_Minute(String s) {
+  return min(59, max(0, int(s.substring(3).toInt())));
+}
 
 
 void handleRoot() {
@@ -91,12 +114,6 @@ void handleStartStop() {
   }
 }
 
-uint8_t parseZeit_Stunde(String s) {
-  return min(23, max(0, int(s.toInt())));
-}
-uint8_t parseZeit_Minute(String s) {
-  return min(59, max(0, int(s.substring(3).toInt())));
-}
 
 void handleSetzeWeckzeit() {
   time_t t = now(); // Store the current time in time
@@ -184,62 +201,89 @@ void handleSetzeWeckzeit() {
 }
 
 void handleKonfig() {
-  char temp[2000];
-  time_t t = now(); // Store the current time in time
-  Serial.printf("Webaufruf /Konfig um %2d:%02d:%02d\n", hour(t), minute(t), second(t));
-  snprintf(temp, 2000,
-           "<html><head><link rel='stylesheet' type='text/css' href='style.css'></head>\
+  if (__Admin_Mode_An) {
+    char temp[2000];
+    time_t t = now(); // Store the current time in time
+    Serial.printf("Webaufruf /Konfig um %2d:%02d:%02d\n", hour(t), minute(t), second(t));
+    snprintf(temp, 2000,
+             "<html><head><link rel='stylesheet' type='text/css' href='style.css'></head>\
 <body><form action='/Setze_Konfig' method='POST'><span>\
 <div class='Tag'>L&auml;nge<input type='number' min='0.5' max='2.0' step='0.1'  name='L' value='%f'></div>\
 <div class='Tag'>Geschwindigkeit<input type='number' min='0.01' max='1.0' step='0.01' name='V' value='%f'></div>\
 <div class='Tag'>Dauer Aufgang<input type='number' min='10' max='600' step='1' name='D' value='%f'></div>\
 <div class='Tag'>Dauer Hell<input type='number' min='2' max='600' step='1'  name='N' value='%f'></div>\
 <div class='Tag'>Snooze-Zeit<input type='number' min='10' max='900' step='1'  name='S' value='%f'></div>\
-</span><span><input type='submit' name='ok' value='ok'></form></span></body></html>",
-           __WZ.lese_SA_laenge(),
-           __WZ.lese_SA_v(),
-           __WZ.lese_SA_dauer(),
-           __WZ.lese_SA_nachleuchten(),
-           __WZ.lese_SA_snooze()
-          );
-  server.send(200, "text/html", temp);
+</span><span><input type='submit' name='ok' value='ok'></span></form></body></html>",
+             __WZ.lese_SA_laenge(),
+             __WZ.lese_SA_v(),
+             __WZ.lese_SA_dauer(),
+             __WZ.lese_SA_nachleuchten(),
+             __WZ.lese_SA_snooze()
+            );
+    server.send(200, "text/html", temp);
+  } else {
+    char temp[2000];
+    time_t t = now(); // Store the current time in time
+    Serial.printf("Webaufruf /Konfig um %2d:%02d:%02d\n", hour(t), minute(t), second(t));
+    snprintf(temp, 2000,
+             "<html><head><link rel='stylesheet' type='text/css' href='style.css'></head>\
+<body><span>\
+<div class='Tag'>L&auml;nge: %f></div>\
+<div class='Tag'>Geschwindigkeit: %f></div>\
+<div class='Tag'>Dauer Aufgang: %f></div>\
+<div class='Tag'>Dauer Hell: %f></div>\
+<div class='Tag'>Snooze-Zeit: %f></div>\
+</span><span></span></body></html>",
+             __WZ.lese_SA_laenge(),
+             __WZ.lese_SA_v(),
+             __WZ.lese_SA_dauer(),
+             __WZ.lese_SA_nachleuchten(),
+             __WZ.lese_SA_snooze()
+            );
+    server.send(200, "text/html", temp);
+  }
 }
 
 void handleSetzeKonfig() {
   time_t t = now(); // Store the current time in time
   Serial.printf("Webaufruf /Setze_Konfig um %2d:%2d:%2d\n", hour(t), minute(t), second(t));
+  if (__Admin_Mode_An) {
 
-  for (int i = 0; i < server.args(); i++) {
-    if (server.argName(i) == "L") {
-      float f = server.arg(i).toFloat();
-      Serial.printf("Konfig: Laenge: %f\n", f);
-      __WZ.setze_SA_laenge(f);
-      __SA.Setze_Laenge(f);
-    } else if (server.argName(i) == "V") {
-      float f = server.arg(i).toFloat();
-      Serial.printf("Konfig: V: %f\n", f);
-      __WZ.setze_SA_v(f);
-      __SA.Setze_v(f);
-    } else if (server.argName(i) == "D") {
-      float f = server.arg(i).toFloat();
-      Serial.printf("Konfig: Dauer: %f\n", f);
-      __WZ.setze_SA_dauer(f);
-      __SA.Setze_Dauer(f);
-    } else if (server.argName(i) == "N") {
-      float f = server.arg(i).toFloat();
-      Serial.printf("Konfig: Nachleuchten: %f\n", f);
-      __WZ.setze_SA_nachleuchten(f);
-      __SA.Setze_Nachleuchten(f);
-    } else if (server.argName(i) == "S") {
-      float f = server.arg(i).toFloat();
-      Serial.printf("Konfig: Snooze: %f\n", f);
-      __WZ.setze_SA_snooze(f);
-      __SA.Setze_Snooze(f);
+    for (int i = 0; i < server.args(); i++) {
+      if (server.argName(i) == "L") {
+        float f = server.arg(i).toFloat();
+        Serial.printf("Konfig: Laenge: %f\n", f);
+        __WZ.setze_SA_laenge(f);
+        __SA.Setze_Laenge(f);
+      } else if (server.argName(i) == "V") {
+        float f = server.arg(i).toFloat();
+        Serial.printf("Konfig: V: %f\n", f);
+        __WZ.setze_SA_v(f);
+        __SA.Setze_v(f);
+      } else if (server.argName(i) == "D") {
+        float f = server.arg(i).toFloat();
+        Serial.printf("Konfig: Dauer: %f\n", f);
+        __WZ.setze_SA_dauer(f);
+        __SA.Setze_Dauer(f);
+      } else if (server.argName(i) == "N") {
+        float f = server.arg(i).toFloat();
+        Serial.printf("Konfig: Nachleuchten: %f\n", f);
+        __WZ.setze_SA_nachleuchten(f);
+        __SA.Setze_Nachleuchten(f);
+      } else if (server.argName(i) == "S") {
+        float f = server.arg(i).toFloat();
+        Serial.printf("Konfig: Snooze: %f\n", f);
+        __WZ.setze_SA_snooze(f);
+        __SA.Setze_Snooze(f);
+      }
     }
+    __WZ.speichern();
+    server.sendHeader("Location", "/Konfig");
+    server.send(303, "text/html", "Location:/Konfig");
+  } else {
+    Serial.println("KEIN ADMIN MODE - tue nix\n");
+    server.send(403, "text/plain", "Kein Admin-Mode!");
   }
-  __WZ.speichern();
-  server.sendHeader("Location", "/Konfig");
-  server.send(303, "text/html", "Location:/Konfig");
 }
 
 void handleLokaleZeit() {
@@ -265,28 +309,37 @@ void handleLokaleZeit() {
 }
 
 void handleFavIcon() {
-  Serial.println("/favicon.ico");
-  File file = SPIFFS.open("/favicon.ico", "r"); // FILE_READ ); // "rb"
-  if (!file) { // isDir geht wohl nur auf ESP32 || file.isDirectory()) {
-    Serial.println(" Verzeichnis?");
-    server.send(404, "text/plain", "failed to open favicon.ico");
-    return;
-  }
-
-  uint8_t buf[512]; // mehr als nötig:
-  uint16_t size = file.size();
-  if (size < 512) {
-    size = file.read(buf, size);
-    Serial.print(" FavIcon gelesen=");
-    Serial.println(size);
-    WiFiClient client = server.client();
-    client.write( buf, size );
-    server.send ( 200, "image/x-icon", "" );
+  Serial.println("handleFavIcon");
+  if (SPIFFS.exists("/favicon.ico")) {
+    File file = SPIFFS.open("/favicon.ico", "r");
+    server.streamFile(file, "image/x-icon");
     file.close();
-    return;
+  } else {
+    server.send(404, "text/plain", "file error");
   }
-  Serial.println(" nicht gefunden");
-  server.send(404, "text/plain", "read favicon.ico failed");
+  /*
+    Serial.println("/favicon.ico");
+    File file = SPIFFS.open("/favicon.ico", "r"); // FILE_READ ); // "rb"
+    if (!file) { // isDir geht wohl nur auf ESP32 || file.isDirectory()) {
+      Serial.println(" Verzeichnis?");
+      server.send(404, "text/plain", "failed to open favicon.ico");
+      return;
+    }
+
+    uint8_t buf[512]; // mehr als nötig:
+    uint16_t size = file.size();
+    if (size < 512) {
+      size = file.read(buf, size);
+      Serial.print(" FavIcon gelesen=");
+      Serial.println(size);
+      WiFiClient client = server.client();
+      client.write( buf, size );
+      server.send ( 200, "image/x-icon", "" );
+      file.close();
+      return;
+    }
+    Serial.println(" nicht gefunden");
+    server.send(404, "text/plain", "read favicon.ico failed"); */
 }
 
 void handleNotFound() {
@@ -306,81 +359,82 @@ void handleNotFound() {
   server.send(404, "text/plain", message);
 }
 
-/////////
-//format bytes
-String formatBytes(size_t bytes) {
-  if (bytes < 1024) {
-    return String(bytes) + "B";
-  } else if (bytes < (1024 * 1024)) {
-    return String(bytes / 1024.0) + "KB";
-  } else if (bytes < (1024 * 1024 * 1024)) {
-    return String(bytes / 1024.0 / 1024.0) + "MB";
+void handleHochladen() {
+  if (__Admin_Mode_An) {
+    if (server.uri() != "/Hochladen") {
+      return;
+    }
+    File fsUploadFile;
+    HTTPUpload& upload = server.upload();
+    if (upload.status == UPLOAD_FILE_START) {
+      String filename = upload.filename;
+      if (!filename.startsWith("/")) {
+        filename = "/" + filename;
+      }
+      Serial.print("handleHochladen Name: "); Serial.println(filename);
+      fsUploadFile = SPIFFS.open(filename, "w");
+      filename = String();
+    } else if (upload.status == UPLOAD_FILE_WRITE) {
+      //Serial.print("handleHochladen Data: "); Serial.println(upload.currentSize);
+      if (fsUploadFile) {
+        fsUploadFile.write(upload.buf, upload.currentSize);
+      }
+    } else if (upload.status == UPLOAD_FILE_END) {
+      if (fsUploadFile) {
+        fsUploadFile.close();
+      }
+      Serial.print("handleHochladen Groesse: "); Serial.println(upload.totalSize);
+    }
+  }
+}
+
+void handleLoeschen() {
+  if (__Admin_Mode_An) {
+    if ((server.args() == 0) || (server.argName(0) != "datei")) {
+      return server.send(500, "text/plain", "BAD ARGS");
+    }
+    String path = server.arg(0);
+    Serial.println("handleLoeschen: " + path);
+    if (path == "/") {
+      return server.send(500, "text/plain", "BAD PATH");
+    }
+    if (!SPIFFS.exists(path)) {
+      return server.send(404, "text/plain", "FileNotFound");
+    }
+    SPIFFS.remove(path);
+    server.sendHeader("Location", "/Dateien");
+    server.send(303, "text/html", "Location:/Dateien");
+    path = String();
   } else {
-    return String(bytes / 1024.0 / 1024.0 / 1024.0) + "GB";
+    Serial.println("KEIN ADMIN MODE - tue nix\n");
+    server.send(403, "text/plain", "Kein Admin-Mode!");
   }
 }
 
-void handleFileUpload() {
-  if (server.uri() != "/edit") {
-    return;
-  }
-  HTTPUpload& upload = server.upload();
-  if (upload.status == UPLOAD_FILE_START) {
-    String filename = upload.filename;
-    if (!filename.startsWith("/")) {
-      filename = "/" + filename;
-    }
-    Serial.print("handleFileUpload Name: "); Serial.println(filename);
-    fsUploadFile = SPIFFS.open(filename, "w");
-    filename = String();
-  } else if (upload.status == UPLOAD_FILE_WRITE) {
-    //Serial.print("handleFileUpload Data: "); Serial.println(upload.currentSize);
-    if (fsUploadFile) {
-      fsUploadFile.write(upload.buf, upload.currentSize);
-    }
-  } else if (upload.status == UPLOAD_FILE_END) {
-    if (fsUploadFile) {
-      fsUploadFile.close();
-    }
-    Serial.print("handleFileUpload Size: "); Serial.println(upload.totalSize);
-  }
-}
 
-void handleFileDelete() {
-  if ((server.args() == 0) || (server.argName(0) != "datei")){
-    return server.send(500, "text/plain", "BAD ARGS");
-  }
-  String path = server.arg(0);
-  Serial.println("handleFileDelete: " + path);
-  if (path == "/") {
-    return server.send(500, "text/plain", "BAD PATH");
-  }
-  if (!SPIFFS.exists(path)) {
-    return server.send(404, "text/plain", "FileNotFound");
-  }
-  SPIFFS.remove(path);
-  server.sendHeader("Location", "/Dateien");
-  server.send(303, "text/html", "Location:/Dateien");
-//  server.send(200, "text/plain", "");
-  path = String();
-}
+void handleDateien() {
+  Serial.println("Seite handleDateien");
 
-
-void handleUpload() {
-  Serial.println("Seite handleUpload");
-
-  //  WiFiClient client = server.client();
   String output;
-  output = "<html><head><link rel='stylesheet' type='text/css' href='style.css'></head><body>\
-<form action='/edit' method='post' enctype='multipart/form-data'><span><div class='Tag'><input type='file' name='name'></div></span><span><input class='button' type='submit' value='Upload'></span></form>";
+  output = "<html><head><link rel='stylesheet' type='text/css' href='style.css'></head><body>";
+  if (__Admin_Mode_An) {
+    output += String("<form action='/Hochladen' method='post' enctype='multipart/form-data'><span><div class='Tag'><input type='file' name='name'></div></span><span><input class='button' type='submit' value='Upload'></span></form>");
+  }
 
   Dir dir = SPIFFS.openDir("/");
   while (dir.next()) {
     File entry = dir.openFile("r");
-    output += String("<form action='/delete' method='post'><span><div class='Tag'><span>");
-    output += entry.name() + String("</span><span>") + entry.size();
-    output += String("</span><input type='text' style='display:none' name='datei' value='") + entry.name();
-    output += String("'></div></span><span><input class='button' type='submit' value='l&ouml;schen'></span></form>");
+    if (__Admin_Mode_An) {
+      output += String("<form action='/Loeschen' method='post'>");
+    }
+    output += String("<div class='Tag'><span>");
+    output += entry.name() + String("</span><span>") + formatBytes(entry.size());
+    if (__Admin_Mode_An) {
+      output += String("</span><input type='text' style='display:none' name='datei' value='") + entry.name();
+      output += String("'></div></span><span><input class='button' type='submit' value='l&ouml;schen'></span></form>");
+    } else {
+      output += String("</span></div>");
+    }
     entry.close();
   }
   output += "</body></html>";
@@ -389,6 +443,7 @@ void handleUpload() {
 ///////////
 
 WebS::WebS() {
+  __Admin_Mode_An = false;
 }
 
 void WebS::Beginn() {
@@ -405,31 +460,33 @@ void WebS::Beginn() {
     Serial.printf("\n");
   }
 
-  server.on("/", handleRoot); // Anzeige Weckzeiten und Möglichkeit Weckzeiten zu setzen. Auch Link zu Konfig
-  server.on("/WeckZeit", handleWeckzeit); // Anzeige Weckzeiten und Möglichkeit Weckzeiten zu setzen. Auch Link zu Konfig
-  server.on("/StartStop", handleStartStop); // nur noch zu Testzwecken
-  server.on("/Setze_WZ", handleSetzeWeckzeit); // Speichert die neuen Weckzeiten ab
-  server.on("/Konfig", handleKonfig); // Zeigt die Konfig-Daten an
-  server.on("/Setze_Konfig", handleSetzeKonfig); // Speichert die neuen Weckzeiten ab
-  server.on("/LokaleZeit", handleLokaleZeit); // zeigt "nur" die aktuelle lokale Zeit an
-  server.on("/favicon.ico", handleFavIcon); // ...
-  server.on("/style.css", handleCSS); // ..
-  server.onNotFound(handleNotFound);
-
-  server.on("/Dateien", handleUpload);
-  //create file
-  //  server.on("/edit", HTTP_PUT, handleFileCreate);
-  //delete file
-  server.on("/delete", handleFileDelete); // 2.arg: HTTP_POST, 
-  //first callback is called after the request has ended with all parsed arguments
-  //second callback handles file uploads at that location
-  server.on("/edit", HTTP_POST, []() {
-  server.sendHeader("Location", "/Dateien");
-  server.send(303, "text/html", "Location:/Dateien");
-//    server.send(200, "text/plain", "");
-  }, handleFileUpload);
+  server.on("/",              handleRoot);          // Anzeige Weckzeiten und Möglichkeit Weckzeiten zu setzen. Auch Link zu Konfig
+  server.on("/WeckZeit",      handleWeckzeit);      // Anzeige Weckzeiten und Möglichkeit Weckzeiten zu setzen. Auch Link zu Konfig
+  server.on("/StartStop",     handleStartStop);     // nur noch zu Testzwecken
+  server.on("/Setze_WZ",      handleSetzeWeckzeit); // Speichert die neuen Weckzeiten ab
+  server.on("/Konfig",        handleKonfig);        // Zeigt die Konfig-Daten an
+  server.on("/Setze_Konfig",  handleSetzeKonfig);   // Speichert die neuen Weckzeiten ab
+  server.on("/LokaleZeit",    handleLokaleZeit);    // zeigt "nur" die aktuelle lokale Zeit an
+  server.on("/Dateien",       handleDateien);        // Datei-Operationen (upload, delete)
+  server.on("/Loeschen",      handleLoeschen);    // Delete (spezifische Datei)
+  server.on("/Hochladen", HTTP_POST, []() { //first callback is called after the request has ended with all parsed arguments
+    if (__Admin_Mode_An) {
+      server.sendHeader("Location", "/Dateien");
+      server.send(303, "text/html", "Location:/Dateien");
+    } else {
+      server.send(403, "text/plain", "Kein Admin-Mode!");
+    }
+  },  handleHochladen);        //second callback handles file uploads at that location
+  server.on("/favicon.ico",   handleFavIcon);       // liefert das Favicon.ico
+  server.on("/style.css",     handleCSS);           // liefert das Stylesheet
+  server.onNotFound(          handleNotFound);      // Fallback
 
   server.begin();
+}
+
+
+void WebS::Admin_Mode() {
+  __Admin_Mode_An = true;
 }
 
 void WebS::Tick() {

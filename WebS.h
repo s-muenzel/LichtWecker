@@ -6,6 +6,7 @@ class WebS {
   public:
     WebS();
 	void Beginn();
+	void Admin_Mode();
 	void Tick();
   private:
 };

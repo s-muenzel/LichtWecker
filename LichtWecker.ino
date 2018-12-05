@@ -139,6 +139,7 @@ void loop() {
 		Serial.printf("Knopf GAAANZ lang - OTA AN  %d:%02d:02d\n", hour(t), minute(t), second(t));
         __SA.Nachricht(Sonnenaufgang::lila, Sonnenaufgang::lang); // lila zeigt, dass jetzt OTA aktiviert ist
         __OTA.Bereit();
+		__WebS.Admin_Mode(); // ab jetzt kann konfiguriert werden und Dateioperationen sind möglich
       }
       break;
   }
