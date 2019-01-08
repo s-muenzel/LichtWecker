@@ -21,6 +21,16 @@ input[type=number] {
     border-radius: 4px;
 }
 
+input[type=text] {
+	float: right;
+    width: 6em;
+    padding: 3px 2px;
+    margin: 1px 0;
+    display: inline-block;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
 input[type=submit] {
     width: 100%;
     background-color: #aaa;

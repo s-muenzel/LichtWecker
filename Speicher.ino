@@ -9,7 +9,9 @@
 #define POS_DAUER         POS_V + sizeof(float)
 #define POS_NACHLEUCHTEN  POS_DAUER + sizeof(float)
 #define POS_SNOOZE        POS_NACHLEUCHTEN + sizeof(float)
-#define GROESSE_ALLES     POS_SNOOZE + sizeof(float)
+#define POS_HOSTNAME      POS_SNOOZE + sizeof(float)
+#define POS_RELAIS        POS_HOSTNAME + sizeof(char[64])
+#define GROESSE_ALLES     POS_RELAIS + sizeof(unsigned int)
 
 Speicher::Speicher() {
 }
@@ -24,11 +26,22 @@ void Speicher::Beginn() {
   EEPROM.get(POS_DAUER, _konfig_dauer);
   EEPROM.get(POS_NACHLEUCHTEN, _konfig_nachleuchten);
   EEPROM.get(POS_SNOOZE, _konfig_snooze);
-  Serial.printf("Wecker ist %s\n", _Aktiv ? "An" : "Aus");
-  for (uint8_t i = 0; i < 7; i++) {
-    Serial.printf("_Weckzeit %d: %d:%02d:%02d (%s)\n", i, hour(_WZ[i]), minute(_WZ[i]), second(_WZ[i]), _An[i] ? "An" : "Aus");
+  EEPROM.get(POS_HOSTNAME, _hostname);
+  if ((strnlen(_hostname, 63) == 0) || (strnlen(_hostname, 63) >= 63)) {
+    strcpy(_hostname, host_name);
+    EEPROM.put(POS_HOSTNAME, _hostname);
   }
-  Serial.printf("L=%f, v=%f, d=%f n=%f, s=%f\n", _konfig_laenge, _konfig_v, _konfig_dauer, _konfig_nachleuchten, _konfig_snooze);
+  EEPROM.get(POS_RELAIS, _konfig_relais);
+  if (_konfig_relais > 5000) {
+    _konfig_relais = 100;
+    EEPROM.put(POS_RELAIS, _konfig_relais);
+  }
+  D_PRINTF("Wecker ist %s\n", _Aktiv ? "An" : "Aus");
+  for (uint8_t i = 0; i < 7; i++) {
+    D_PRINTF("_Weckzeit %d: %d:%02d:%02d (%s)\n", i, hour(_WZ[i]), minute(_WZ[i]), second(_WZ[i]), _An[i] ? "An" : "Aus");
+  }
+  D_PRINTF("L=%f, v=%f, d=%f n=%f, s=%f, r=%u\n", _konfig_laenge, _konfig_v, _konfig_dauer, _konfig_nachleuchten, _konfig_snooze, _konfig_relais);
+  D_PRINTF("Hostname: %s\n", _hostname);
 }
 
 time_t Speicher::Weckzeit(int Tag) {
@@ -92,6 +105,11 @@ float Speicher::lese_SA_snooze() {
   return _konfig_snooze;
 }
 
+unsigned int Speicher::lese_SA_relais() {
+  EEPROM.get(POS_RELAIS, _konfig_relais);
+  return _konfig_relais;
+}
+
 void Speicher::setze_SA_laenge(float f) {
   _konfig_laenge = f;
   EEPROM.put(POS_LAENGE, _konfig_laenge);
@@ -114,5 +132,20 @@ void Speicher::setze_SA_nachleuchten(float f) {
 void Speicher::setze_SA_snooze(float f) {
   _konfig_snooze = f;
   EEPROM.put(POS_SNOOZE, _konfig_snooze);
+}
+
+void Speicher::setze_SA_relais(unsigned int n) {
+  _konfig_relais = n;
+  EEPROM.put(POS_RELAIS, _konfig_relais);
+}
+
+const char *Speicher::lese_hostname() {
+  return _hostname;
+}
+
+void Speicher::setze_hostname(const char* n) {
+  strncpy(_hostname, n, 63);
+  D_PRINTF("Hostname: %s (size: %d)\n", _hostname, sizeof(_hostname));
+  EEPROM.put(POS_HOSTNAME, _hostname);
 }
 

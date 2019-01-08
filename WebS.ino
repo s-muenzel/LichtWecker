@@ -35,7 +35,7 @@ uint8_t parseZeit_Minute(String s) {
 
 
 void handleRoot() {
-  Serial.println("handleRoot");
+  D_PRINTLN("handleRoot");
   if (SPIFFS.exists("/top.htm")) {
     File file = SPIFFS.open("/top.htm", "r");
     server.streamFile(file, "text/html");
@@ -46,7 +46,7 @@ void handleRoot() {
 }
 
 void handleCSS() {
-  Serial.println("handleCSS");
+  D_PRINTLN("handleCSS");
   if (SPIFFS.exists("/style.css")) {
     File file = SPIFFS.open("/style.css", "r");
     server.streamFile(file, "text/css");
@@ -65,7 +65,7 @@ void handleWeckzeit() {
     w[i] = __WZ.Weckzeit(i);
     a[i] = __WZ.Wecker_An(i);
   }
-  Serial.printf("Webaufruf / um %2d:%02d:%02d\n", hour(t), minute(t), second(t));
+  D_PRINTF("Webaufruf / um %2d:%02d:%02d\n", hour(t), minute(t), second(t));
   snprintf(temp, 2000,
            "<html><head><meta charset='UTF-8'><link rel='stylesheet' type='text/css' href='style.css'></head>\
 <body><form action='/Setze_WZ' method='POST'><span><div class='Tag'>Wecker an <input type='checkbox' name='Aktiv' %s></div><hr>\
@@ -89,35 +89,67 @@ void handleWeckzeit() {
   server.send(200, "text/html", temp);
 }
 
-void handleStartStop() {
+void handleSnooze() {
   time_t t = now(); // Store the current time in time
-  Serial.printf("Webaufruf /StartStop um %2d:%2d:%2d\n", hour(t), minute(t), second(t));
-  if ((server.args() == 1) && (server.argName(0) == "Schalten")) {
-    if (server.arg(0) == "start") {
-      Serial.printf("Starte Sonnenaufgang\n");
-      __SA.Start();
-      server.sendHeader("Location", "/");
-      server.send(303, "text/html", "Location: /");
-    } else {
-      Serial.printf("Stoppe Sonnenaufgang\n");
-      __SA.Stop();
-      server.sendHeader("Location", "/");
-      server.send(303, "text/html", "Location: /");
-    }
+  D_PRINTF("Webaufruf /Snooze um %2d:%2d:%2d\n", hour(t), minute(t), second(t));
+  if (__SA.Laeuft()) {
+    D_PRINTF("Snooze\n");
+    __SA.Snooze();
+    server.sendHeader("Location", "/");
+    server.send(303, "text/html", "Location: /");
   } else {
-    Serial.printf("Fehler in Args\n");
-    String message = "Fehler in den Args\n\n";
-    for (uint8_t i = 0; i < server.args(); i++) {
-      message += " " + server.argName(i) + ": " + server.arg(i) + "\n";
-    }
-    server.send(400, "text/plain", message);
+    D_PRINTF("laeuft ja gar nicht, kein Snooze\n");
+    server.sendHeader("Location", "/");
+    server.send(303, "text/html", "Location: /");
   }
 }
 
+void handle24Aus() {
+  time_t t = now(); // Store the current time in time
+  D_PRINTF("Webaufruf /Snooze um %2d:%2d:%2d\n", hour(t), minute(t), second(t));
+  if (__SA.Laeuft()) {
+    D_PRINTF("24Aus\n");
+    __SA.Stop();
+    server.sendHeader("Location", "/");
+    server.send(303, "text/html", "Location: /");
+  } else {
+    D_PRINTF("laeuft ja gar nicht, kann kein 24Aus machen\n");
+    server.sendHeader("Location", "/");
+    server.send(303, "text/html", "Location: /");
+  }
+}
+
+void handleStart() {
+  time_t t = now(); // Store the current time in time
+  D_PRINTF("Webaufruf /Start um %2d:%2d:%2d\n", hour(t), minute(t), second(t));
+  if (__Admin_Mode_An) {
+    D_PRINTF("Starte Sonnenaufgang\n");
+    __SA.Start();
+    server.sendHeader("Location", "/Konfig");
+    server.send(303, "text/html", "Location: /Konfig");
+  } else {
+    D_PRINTLN("KEIN ADMIN MODE - tue nix\n");
+    server.send(403, "text/plain", "Kein Admin-Mode!");
+  }
+}
+
+void handleReset() {
+  time_t t = now(); // Store the current time in time
+  D_PRINTF("Webaufruf /Reset um %2d:%2d:%2d\n", hour(t), minute(t), second(t));
+  if (__Admin_Mode_An) {
+    D_PRINTF("Resette JETZT\n");
+    server.send(200, "text/plain", "Resetting - reload now");
+    delay(1000);
+    ESP.restart();
+  } else {
+    D_PRINTLN("KEIN ADMIN MODE - tue nix\n");
+    server.send(403, "text/plain", "Kein Admin-Mode!");
+  }
+}
 
 void handleSetzeWeckzeit() {
   time_t t = now(); // Store the current time in time
-  Serial.printf("Webaufruf /Setze_WZ um %2d:%2d:%2d\n", hour(t), minute(t), second(t));
+  D_PRINTF("Webaufruf /Setze_WZ um %2d:%2d:%2d\n", hour(t), minute(t), second(t));
   tmElements_t tmSet;
   tmSet.Year = 1;
   tmSet.Month = 1;
@@ -187,11 +219,11 @@ void handleSetzeWeckzeit() {
       a[1] = true;
     }
   }
-  Serial.printf("Neue Weckzeiten:\nAktiv: %s\n", _Aktiv ? "Ja" : "Nein");
+  D_PRINTF("Neue Weckzeiten:\nAktiv: %s\n", _Aktiv ? "Ja" : "Nein");
   __WZ.Wecker_Aktiv(_Aktiv);
   for (int i = 0; i < 7; i++) {
     if (u[i]) {
-      Serial.printf("%d: %02d:%02d %s\n", i, hour(w[i]), minute(w[i]), a[i] ? "An" : "Aus");
+      D_PRINTF("%d: %02d:%02d %s\n", i, hour(w[i]), minute(w[i]), a[i] ? "An" : "Aus");
       __WZ.setze_Weckzeit(i, w[i], a[i]);
     }
   }
@@ -204,7 +236,7 @@ void handleKonfig() {
   if (__Admin_Mode_An) {
     char temp[2000];
     time_t t = now(); // Store the current time in time
-    Serial.printf("Webaufruf /Konfig um %2d:%02d:%02d\n", hour(t), minute(t), second(t));
+    D_PRINTF("Webaufruf /Konfig um %2d:%02d:%02d\n", hour(t), minute(t), second(t));
     snprintf(temp, 2000,
              "<html><head><meta charset='UTF-8'><link rel='stylesheet' type='text/css' href='style.css'></head>\
 <body><form action='/Setze_Konfig' method='POST'><span>\
@@ -213,18 +245,25 @@ void handleKonfig() {
 <div class='Tag'>Dauer Aufgang<input type='number' min='10' max='600' step='1' name='D' value='%f'></div>\
 <div class='Tag'>Dauer Hell<input type='number' min='2' max='600' step='1'  name='N' value='%f'></div>\
 <div class='Tag'>Snooze-Zeit<input type='number' min='10' max='900' step='1'  name='S' value='%f'></div>\
-</span><span><input type='submit' name='ok' value='ok'></span></form></body></html>",
+<div class='Tag'>Schaltdauer Relais<input type='number' min='10' max='999' step='1'  name='R' value='%u'></div>\
+<div class='Tag'>Hostname<input type='text' name='H' value='%s'></div>\
+</span><span><input type='submit' name='ok' value='ok'></span></form>\
+<form action='/Start'><span><div class='Tag'>Starte jetzt</div></span><span><input type='submit' name='ok' value='ok'></span></form>\
+<form action='/Reset'><span><div class='Tag'>Neustart</div></span><span><input type='submit' name='ok' value='ok'></span></form>\
+</body></html>",
              __WZ.lese_SA_laenge(),
              __WZ.lese_SA_v(),
              __WZ.lese_SA_dauer(),
              __WZ.lese_SA_nachleuchten(),
-             __WZ.lese_SA_snooze()
+             __WZ.lese_SA_snooze(),
+             __WZ.lese_SA_relais(),
+             __WZ.lese_hostname()
             );
     server.send(200, "text/html", temp);
   } else {
     char temp[2000];
     time_t t = now(); // Store the current time in time
-    Serial.printf("Webaufruf /Konfig um %2d:%02d:%02d\n", hour(t), minute(t), second(t));
+    D_PRINTF("Webaufruf /Konfig um %2d:%02d:%02d\n", hour(t), minute(t), second(t));
     snprintf(temp, 2000,
              "<html><head><meta charset='UTF-8'><link rel='stylesheet' type='text/css' href='style.css'></head>\
 <body><span>\
@@ -233,12 +272,16 @@ void handleKonfig() {
 <div class='Tag'>Dauer Aufgang:<span class='Rechts'>%4.0f s</span></div>\
 <div class='Tag'>Dauer Hell:<span class='Rechts'>%4.0f s</span></div>\
 <div class='Tag'>Snooze-Zeit:<span class='Rechts'>%4.0f s</span></div>\
+<div class='Tag'>Schaltdauer Relais:<span class='Rechts'>%4u ms</span></div>\
+<div class='Tag'>Hostname:<span class='Rechts'>%s</span></div>\
 </span><span></span></body></html>",
              __WZ.lese_SA_laenge(),
              __WZ.lese_SA_v(),
              __WZ.lese_SA_dauer(),
              __WZ.lese_SA_nachleuchten(),
-             __WZ.lese_SA_snooze()
+             __WZ.lese_SA_snooze(),
+             __WZ.lese_SA_relais(),
+             __WZ.lese_hostname()
             );
     server.send(200, "text/html", temp);
   }
@@ -246,47 +289,57 @@ void handleKonfig() {
 
 void handleSetzeKonfig() {
   time_t t = now(); // Store the current time in time
-  Serial.printf("Webaufruf /Setze_Konfig um %2d:%2d:%2d\n", hour(t), minute(t), second(t));
+  D_PRINTF("Webaufruf /Setze_Konfig um %2d:%2d:%2d\n", hour(t), minute(t), second(t));
   if (__Admin_Mode_An) {
 
     for (int i = 0; i < server.args(); i++) {
       if (server.argName(i) == "L") {
         float f = server.arg(i).toFloat();
-        Serial.printf("Konfig: Laenge: %f\n", f);
+        D_PRINTF("Konfig: Laenge: %f\n", f);
         __WZ.setze_SA_laenge(f);
         __SA.Setze_Laenge(f);
       } else if (server.argName(i) == "V") {
         float f = server.arg(i).toFloat();
-        Serial.printf("Konfig: V: %f\n", f);
+        D_PRINTF("Konfig: V: %f\n", f);
         __WZ.setze_SA_v(f);
         __SA.Setze_v(f);
       } else if (server.argName(i) == "D") {
         float f = server.arg(i).toFloat();
-        Serial.printf("Konfig: Dauer: %f\n", f);
+        D_PRINTF("Konfig: Dauer: %f\n", f);
         __WZ.setze_SA_dauer(f);
         __SA.Setze_Dauer(f);
       } else if (server.argName(i) == "N") {
         float f = server.arg(i).toFloat();
-        Serial.printf("Konfig: Nachleuchten: %f\n", f);
+        D_PRINTF("Konfig: Nachleuchten: %f\n", f);
         __WZ.setze_SA_nachleuchten(f);
         __SA.Setze_Nachleuchten(f);
       } else if (server.argName(i) == "S") {
         float f = server.arg(i).toFloat();
-        Serial.printf("Konfig: Snooze: %f\n", f);
+        D_PRINTF("Konfig: Snooze: %f\n", f);
         __WZ.setze_SA_snooze(f);
         __SA.Setze_Snooze(f);
+      } else if (server.argName(i) == "R") {
+        unsigned int n = server.arg(i).toInt();
+        if (n > 5000)
+          n = 100;
+        D_PRINTF("Konfig: Relais: %d\n", n);
+        __WZ.setze_SA_relais(n);
+        __SA.Setze_Relais(n);
+      } else if (server.argName(i) == "H") {
+        D_PRINTF("Konfig: Hostname: %s\n", server.arg(i).c_str());
+        __WZ.setze_hostname(server.arg(i).c_str());
       }
     }
     __WZ.speichern();
     server.sendHeader("Location", "/Konfig");
     server.send(303, "text/html", "Location:/Konfig");
   } else {
-    Serial.println("KEIN ADMIN MODE - tue nix\n");
+    D_PRINTLN("KEIN ADMIN MODE - tue nix\n");
     server.send(403, "text/plain", "Kein Admin-Mode!");
   }
 }
 
-void handleLokaleZeit() {
+void handleStatus() {
   char temp[1000];
   time_t t = now(); // Store the current time in time
   snprintf(temp, 1000,
@@ -295,7 +348,7 @@ void handleLokaleZeit() {
 }
 
 void handleFavIcon() {
-  Serial.println("handleFavIcon");
+  D_PRINTLN("handleFavIcon");
   if (SPIFFS.exists("/favicon.ico")) {
     File file = SPIFFS.open("/favicon.ico", "r");
     server.streamFile(file, "image/x-icon");
@@ -307,7 +360,7 @@ void handleFavIcon() {
 
 void handleNotFound() {
   time_t t = now(); // Store the current time in time
-  Serial.printf("Webaufruf - unbekannte Seite %s um %2d:%02d:%02d\n", server.uri().c_str(), hour(t), minute(t), second(t));
+  D_PRINTF("Webaufruf - unbekannte Seite %s um %2d:%02d:%02d\n", server.uri().c_str(), hour(t), minute(t), second(t));
   String message = "File Not Found\n\n";
   message += "URI: ";
   message += server.uri();
@@ -334,11 +387,11 @@ void handleHochladen() {
       if (!filename.startsWith("/")) {
         filename = "/" + filename;
       }
-      Serial.print("handleHochladen Name: "); Serial.println(filename);
+      D_PRINT("handleHochladen Name: "); D_PRINTLN(filename);
       fsUploadFile = SPIFFS.open(filename, "w");
       filename = String();
     } else if (upload.status == UPLOAD_FILE_WRITE) {
-      //Serial.print("handleHochladen Data: "); Serial.println(upload.currentSize);
+      //D_PRINT("handleHochladen Data: "); D_PRINTLN(upload.currentSize);
       if (fsUploadFile) {
         fsUploadFile.write(upload.buf, upload.currentSize);
       }
@@ -346,7 +399,7 @@ void handleHochladen() {
       if (fsUploadFile) {
         fsUploadFile.close();
       }
-      Serial.print("handleHochladen Groesse: "); Serial.println(upload.totalSize);
+      D_PRINT("handleHochladen Groesse: "); D_PRINTLN(upload.totalSize);
     }
   }
 }
@@ -357,7 +410,7 @@ void handleLoeschen() {
       return server.send(500, "text/plain", "BAD ARGS");
     }
     String path = server.arg(0);
-    Serial.println("handleLoeschen: " + path);
+    D_PRINTLN("handleLoeschen: " + path);
     if (path == "/") {
       return server.send(500, "text/plain", "BAD PATH");
     }
@@ -369,14 +422,14 @@ void handleLoeschen() {
     server.send(303, "text/html", "Location:/Dateien");
     path = String();
   } else {
-    Serial.println("KEIN ADMIN MODE - tue nix\n");
+    D_PRINTLN("KEIN ADMIN MODE - tue nix\n");
     server.send(403, "text/plain", "Kein Admin-Mode!");
   }
 }
 
 
 void handleDateien() {
-  Serial.println("Seite handleDateien");
+  D_PRINTLN("Seite handleDateien");
 
   String output;
   output = "<html><head><meta charset='UTF-8'><link rel='stylesheet' type='text/css' href='style.css'></head><body>";
@@ -398,7 +451,7 @@ void handleDateien() {
     } else {
       output += String("</span></div>");
     }
-    Serial.printf("File '%s', Size %d\n", entry.name(), entry.size());
+    D_PRINTF("File '%s', Size %d\n", entry.name(), entry.size());
     entry.close();
   }
   output += "</body></html>";
@@ -412,27 +465,30 @@ WebS::WebS() {
 
 void WebS::Beginn() {
   if (!SPIFFS.begin()) {
-    Serial.println("Failed to mount file system");
+    D_PRINTLN("Failed to mount file system");
   }
   {
     Dir dir = SPIFFS.openDir("/");
     while (dir.next()) {
       String fileName = dir.fileName();
       size_t fileSize = dir.fileSize();
-      Serial.printf("FS File: %s, size: %s\n", fileName.c_str(), formatBytes(fileSize).c_str());
+      D_PRINTF("FS File: %s, size: %s\n", fileName.c_str(), formatBytes(fileSize).c_str());
     }
-    Serial.printf("\n");
+    D_PRINTF("\n");
   }
 
-  server.on("/",              handleRoot);          // Anzeige Weckzeiten und Möglichkeit Weckzeiten zu setzen. Auch Link zu Konfig
-  server.on("/WeckZeit",      handleWeckzeit);      // Anzeige Weckzeiten und Möglichkeit Weckzeiten zu setzen. Auch Link zu Konfig
-  server.on("/StartStop",     handleStartStop);     // nur noch zu Testzwecken
+  server.on("/",              handleRoot);          // Anzeige Weckzeiten und Möglichkeit Weckzeiten zu setzen. Auch Link zu Konfig und Dateien
+  server.on("/Snooze",        handleSnooze);        // Falls ein Sonnenaufgang läuft --> Snooze aufrufen
+  server.on("/24Aus",         handle24Aus);         // Falls ein Sonnenaufgang läuft --> Stop aufrufen
+  server.on("/Status",        handleStatus);        // liefert lokale Zeit, Admin- und Aktiv-Status per JSON
+  server.on("/WeckZeit",      handleWeckzeit);      // Anzeige Weckzeiten und Möglichkeit Weckzeiten zu setzen
   server.on("/Setze_WZ",      handleSetzeWeckzeit); // Speichert die neuen Weckzeiten ab
   server.on("/Konfig",        handleKonfig);        // Zeigt die Konfig-Daten an
   server.on("/Setze_Konfig",  handleSetzeKonfig);   // Speichert die neuen Weckzeiten ab
-  server.on("/LokaleZeit",    handleLokaleZeit);    // zeigt "nur" die aktuelle lokale Zeit an
-  server.on("/Dateien",       handleDateien);        // Datei-Operationen (upload, delete)
-  server.on("/Loeschen",      handleLoeschen);    // Delete (spezifische Datei)
+  server.on("/Start",         handleStart);         // nur noch zu Testzwecken - startet einen Sonnenaufgang
+  server.on("/Reset",         handleReset);         // Neustart, nötig wenn z.B. Hostname geändert wurde oder Admin-Mode zurückgesetzt werden soll
+  server.on("/Dateien",       handleDateien);       // Datei-Operationen (upload, delete)
+  server.on("/Loeschen",      handleLoeschen);      // Delete (spezifische Datei)
   server.on("/Hochladen", HTTP_POST, []() { //first callback is called after the request has ended with all parsed arguments
     if (__Admin_Mode_An) {
       server.sendHeader("Location", "/Dateien");

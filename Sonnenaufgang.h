@@ -2,7 +2,8 @@
 #define _SONNENAUFGANG
 
 // an welchem PIN hängt die Lichterkette
-#define KETTE_PIN 14  // Sonoff Basic: GPIO 14
+//#define KETTE_PIN 14  // Sonoff Basic: GPIO 14
+#define KETTE_PIN   2  // Sonoff Basic von ITEAD, V2: GPIO 2
 #define RELAIS_PIN 12 // Sonoff Basic: GPIO 12
 
 
@@ -14,6 +15,7 @@
 #define NACHLEUCHTEN 2.0f    // [s] wie lange bleibt das Licht nach dem "Sonnenaufgang" an
 #define SNOOZE  5.f          // [s] wie lange dauert ein Snooze (Pause, nach einen Snooze-Call)
 #define BLINKDAUER  0.5f     // [s] wie lange dauert ein Blink (Nachricht)
+#define RELAIS  100          // [ms] wie lange dauert es, bis nach dem Einschalten des Relais die LEDs leuchten können
 
 class Sonnenaufgang {
   public:
@@ -35,6 +37,9 @@ class Sonnenaufgang {
     }
     void Setze_Snooze(float s) {
       _konfig_snooze = s;
+    }
+    void Setze_Relais(unsigned int n) {
+      _konfig_relais = n;
     }
 
     void Start();
@@ -81,6 +86,7 @@ class Sonnenaufgang {
     float _konfig_dauer;
     float _konfig_nachleuchten;
     float _konfig_snooze;
+    unsigned int   _konfig_relais;
 
     bool _status_Relais;
 };

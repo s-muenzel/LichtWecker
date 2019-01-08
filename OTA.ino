@@ -12,20 +12,20 @@ void OTA::Beginn() {
   // Port defaults to 8266
   // ArduinoOTA.setPort(8266);
   // Hostname defaults to esp8266-[ChipID]
-  ArduinoOTA.setHostname(__Hostname); // überschreibt wohl den Aufruf von MDNS.begin()
+  ArduinoOTA.setHostname(__WZ.lese_hostname()); // überschreibt wohl den Aufruf von MDNS.begin()
   // No authentication by default
   //  ArduinoOTA.setPassword("...");
   // Password can be set with it's md5 value as well
   // MD5(admin) = 21232f297a57a5a743894a0e4a801fc3
-  ArduinoOTA.setPasswordHash("30eb558f1c129d200efbfed6eb6d8466");
+  ArduinoOTA.setPasswordHash(ota_hash);
   ArduinoOTA.setRebootOnSuccess(true);
   ArduinoOTA.onStart([]() {
     __SA.Stop();
-    Serial.println("Start updating ");
+    D_PRINTLN("Start updating ");
   });
   ArduinoOTA.onEnd([]() {
     __SA.Stop();
-    Serial.println("\nEnd");
+    D_PRINTLN("\nEnd");
   });
   ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
     static Sonnenaufgang::Farb_t _farbe = Sonnenaufgang::gruen;
@@ -43,21 +43,22 @@ void OTA::Beginn() {
         _farbe = Sonnenaufgang::gruen;
         break;
     }
-    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+    __SA.Tick(); // Tick wird sonst nicht gerufen, ohne Tick kein Licht
+    D_PRINTF("Progress: %u%%\r", (progress / (total / 100)));
   });
   ArduinoOTA.onError([](ota_error_t error) {
-    Serial.printf("Error[%u]: ", error);
+    D_PRINTF("Error[%u]: ", error);
     __SA.Nachricht(Sonnenaufgang::rot, Sonnenaufgang::lang);
     if (error == OTA_AUTH_ERROR) {
-      Serial.println("Auth Failed");
+      D_PRINTLN("Auth Failed");
     } else if (error == OTA_BEGIN_ERROR) {
-      Serial.println("Begin Failed");
+      D_PRINTLN("Begin Failed");
     } else if (error == OTA_CONNECT_ERROR) {
-      Serial.println("Connect Failed");
+      D_PRINTLN("Connect Failed");
     } else if (error == OTA_RECEIVE_ERROR) {
-      Serial.println("Receive Failed");
+      D_PRINTLN("Receive Failed");
     } else if (error == OTA_END_ERROR) {
-      Serial.println("End Failed");
+      D_PRINTLN("End Failed");
     }
   });
 	

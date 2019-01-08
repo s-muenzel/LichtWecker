@@ -106,6 +106,7 @@ Sonnenaufgang::Sonnenaufgang() {
   _konfig_dauer = DAUER;
   _konfig_nachleuchten = NACHLEUCHTEN;
   _konfig_snooze = SNOOZE;
+  _konfig_relais = RELAIS;
   pinMode(RELAIS_PIN, OUTPUT);
 }
 
@@ -114,7 +115,7 @@ void Sonnenaufgang::Beginn() {
   __strip.setBrightness(255);
   __strip.show(); // Initialiere alle auf "Aus"
 
-  Serial.printf("RELAIS AUS");
+  D_PRINTF("RELAIS AUS");
   digitalWrite(RELAIS_PIN, LOW);
   _status_Relais = false;
 }
@@ -126,9 +127,9 @@ void Sonnenaufgang::Start() {
 
   // immer zuerst sicherstellen, dass das Relais an ist
   if (!_status_Relais) {
-    Serial.printf("RELAIS AN");
+    D_PRINTF("RELAIS AN");
     digitalWrite(RELAIS_PIN, HIGH);
-    delay(100); // mal kurz warten, damit das Relais auch sicher angezogen hat
+    delay(_konfig_relais); // mal kurz warten, damit das Relais auch sicher angezogen hat
     _status_Relais = true;
   }
   _Nachlaufzeit = round(_konfig_nachleuchten * 1000);
@@ -136,7 +137,7 @@ void Sonnenaufgang::Start() {
   _Modus = aufgang;
   _Startzeit = millis();
   digitalWrite(LED_BUILTIN, LOW); // bei Sonoff Basic HIGH = OFF
-  Serial.printf("Starte Sonnenaufgang bei %ld, Dauer %ld Nachlaufzeit %ld\n", _Startzeit, _Dauer, _Nachlaufzeit);
+  D_PRINTF("Starte Sonnenaufgang bei %ld, Dauer %ld Nachlaufzeit %ld\n", _Startzeit, _Dauer, _Nachlaufzeit);
 }
 
 bool Sonnenaufgang::Snooze() {
@@ -147,7 +148,7 @@ bool Sonnenaufgang::Snooze() {
 }
 
 void Sonnenaufgang::Stop() {
-  Serial.printf("Stoppe Sonnenaufgang bei %lu (nach %ld)\n", millis(), (long)(millis() - _Startzeit));
+  D_PRINTF("Stoppe Sonnenaufgang bei %lu (nach %ld)\n", millis(), (long)(millis() - _Startzeit));
   // Stop löscht das Licht und setzt _Startzeit wieder auf 0
   for (uint16_t _n = 0; _n < __strip.numPixels(); _n++) {
     __strip.setPixelColor(_n, 0);
@@ -162,9 +163,9 @@ void Sonnenaufgang::Stop() {
 void Sonnenaufgang::Nachricht(Farb_t farbe, Dauer_t dauer, uint8_t prozent) {
   // immer zuerst sicherstellen, dass das Relais an ist
   if (!_status_Relais) {
-    Serial.printf("RELAIS AN");
+    D_PRINTF("RELAIS AN");
     digitalWrite(RELAIS_PIN, HIGH);
-    delay(100); // mal kurz warten, damit das Relais auch sicher angezogen hat
+    delay(_konfig_relais); // mal kurz warten, damit das Relais auch sicher angezogen hat
     _status_Relais = true;
   }
   _Nachlaufzeit = 0;
@@ -182,7 +183,7 @@ void Sonnenaufgang::Nachricht(Farb_t farbe, Dauer_t dauer, uint8_t prozent) {
   _Startzeit = millis();
   _Farbe = farbe;
   digitalWrite(LED_BUILTIN, LOW); // bei Sonoff Basic HIGH = OFF
-  Serial.printf("Starte Nachricht bei %ld, Dauer %ld, Farbe #%d\n", _Startzeit, _Dauer, _Farbe);
+  D_PRINTF("Starte Nachricht bei %ld, Dauer %ld, Farbe #%d\n", _Startzeit, _Dauer, _Farbe);
 }
 bool Sonnenaufgang::Laeuft() {
   return _Startzeit > 0;
@@ -206,7 +207,7 @@ void Sonnenaufgang::Tick() {
     }
   } else {
     if (_status_Relais) {
-      Serial.printf("RELAIS AUS");
+      D_PRINTF("RELAIS AUS");
       digitalWrite(RELAIS_PIN, LOW);
       _status_Relais = false;
     }

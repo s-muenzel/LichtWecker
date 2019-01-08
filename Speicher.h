@@ -23,11 +23,18 @@ class Speicher {
     float lese_SA_dauer();
     float lese_SA_nachleuchten();
     float lese_SA_snooze();
+    unsigned int   lese_SA_relais();
+
     void setze_SA_laenge(float f);
     void setze_SA_v(float f);
     void setze_SA_dauer(float f);
     void setze_SA_nachleuchten(float f);
     void setze_SA_snooze(float f);
+    void setze_SA_relais(unsigned int n);
+
+
+    const char *lese_hostname();
+    void setze_hostname(const char* n);
 
   private:
     time_t _WZ[7];	// für jeden Wochentag (erstmal egal)
@@ -39,6 +46,9 @@ class Speicher {
     float _konfig_nachleuchten;
     float _konfig_snooze;
 
+    char _hostname[64];
+
+    unsigned int _konfig_relais;
 };
 
 #endif // _SPEICHER

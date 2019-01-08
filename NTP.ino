@@ -18,13 +18,13 @@ byte packetBuffer[NTP_PACKET_SIZE]; //buffer to hold incoming & outgoing packets
 time_t getNtpTime()
 {
   while (Udp.parsePacket() > 0) ; // discard any previously received packets
-  Serial.println("Transmit NTP Request");
+  D_PRINTLN("Transmit NTP Request");
   sendNTPpacket(timeServer);
   uint32_t beginWait = millis();
   while (millis() - beginWait < 1500) {
     int size = Udp.parsePacket();
     if (size >= NTP_PACKET_SIZE) {
-      Serial.println("Receive NTP Response");
+      D_PRINTLN("Receive NTP Response");
       Udp.read(packetBuffer, NTP_PACKET_SIZE);  // read packet into the buffer
       unsigned long secsSince1900;
       // convert four bytes starting at location 40 to a long integer
@@ -35,7 +35,7 @@ time_t getNtpTime()
       return secsSince1900 - 2208988800UL + timeZone * SECS_PER_HOUR;
     }
   }
-  Serial.println("No NTP Response :-(");
+  D_PRINTLN("No NTP Response :-(");
   return 0; // return 0 if unable to get the time
 }
 
@@ -68,7 +68,7 @@ NTP_Helfer::NTP_Helfer() {
 void NTP_Helfer::Beginn() {
   Udp.begin(localPort);
   setSyncProvider(getNtpTime);
-  Serial.println(" Ntp-Service gestartet\n");  
+  D_PRINTLN(" Ntp-Service gestartet\n");  
 }
 
 
