@@ -6,13 +6,13 @@ class OTA {
     OTA();
 
     void Beginn();
-	void Bereit();
-	
-	void Tick();
+    void Bereit();
+
+    void Tick();
 
   private:
 
-	bool _OTA_An; // Wurde OTA schon "angeschltet"
+    bool _OTA_An; // Wurde OTA schon "angeschltet"
 };
 
 #endif // _OTA

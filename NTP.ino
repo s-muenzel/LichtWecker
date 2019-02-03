@@ -68,7 +68,7 @@ NTP_Helfer::NTP_Helfer() {
 void NTP_Helfer::Beginn() {
   Udp.begin(localPort);
   setSyncProvider(getNtpTime);
-  D_PRINTLN(" Ntp-Service gestartet\n");  
+  D_PRINTLN(" Ntp-Service gestartet\n");
 }
 
 

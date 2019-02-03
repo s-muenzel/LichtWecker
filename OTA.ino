@@ -3,7 +3,7 @@
 #include <WiFiUdp.h>
 
 OTA::OTA() {
-	_OTA_An = false;
+  _OTA_An = false;
 }
 
 void OTA::Beginn() {
@@ -61,12 +61,12 @@ void OTA::Beginn() {
       D_PRINTLN("End Failed");
     }
   });
-	
+
 }
 
 void OTA::Bereit() {
-	_OTA_An = true;
-    ArduinoOTA.begin();
+  _OTA_An = true;
+  ArduinoOTA.begin();
 };
 
 void OTA::Tick() {

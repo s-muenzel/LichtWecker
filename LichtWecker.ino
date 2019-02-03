@@ -18,6 +18,8 @@
 #define D_PRINTF(...)
 #endif
 
+#define MAX_UNSIGNED_LONG 4294967295UL
+
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
 
@@ -97,6 +99,13 @@ void setup() {
 }
 
 void loop() {
+
+  if (millis() > MAX_UNSIGNED_LONG - 3600 * 1000UL) { // Zeit für einen Neustart
+    if (!__SA.Laeuft()) { // Nur Neustart, wenn grade kein Weckvorgang läuft
+      ESP.restart();
+    }
+  }
+
   time_t t = now(); // Zeit holen
 
 #ifdef DEBUG_SERIAL

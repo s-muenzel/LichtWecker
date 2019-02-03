@@ -69,14 +69,14 @@ uint32_t Sonnenaufgang::Lichtfarbe(float t, float x) {
   // x ausserhalb der Wert macht keine Sinn
   float _x = max(0.0f, min(_konfig_laenge, x));
   // wenn von der Mitte angefangen werden soll
-/*   
-  float _x_prime = (2.0 * _x - _konfig_laenge) / _konfig_v;
-  if (_x_prime < 0)
-    _x_prime = -_x_prime;*/
-// Wenn vom Anfang angefangen werden soll
-/*
-  float _x_prime = _x / _konfig_v; */
-// Wenn vom Ende angefangen werden soll
+  /*
+    float _x_prime = (2.0 * _x - _konfig_laenge) / _konfig_v;
+    if (_x_prime < 0)
+      _x_prime = -_x_prime;*/
+  // Wenn vom Anfang angefangen werden soll
+  /*
+    float _x_prime = _x / _konfig_v; */
+  // Wenn vom Ende angefangen werden soll
   float _x_prime = (_konfig_laenge - _x) / _konfig_v;
   float _t_x = t - _x_prime;
   _t_x = max(0.0f, min(_konfig_dauer, _t_x));
@@ -249,7 +249,7 @@ void Sonnenaufgang::Tick_Nachricht(long ms) {
     }
     for (; _n < __strip.numPixels(); _n++) {
       __strip.setPixelColor(_n, 0);
-    }    
+    }
     __strip.show();
   }
 }
