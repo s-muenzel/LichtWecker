@@ -18,7 +18,7 @@ Alternativ geht auch ein `ESP 01(-S)`, dann mit Pegelkonverter. Da dann ohne Tas
 
 
 ### LEDs ###
-Eine WS2812(xx), die Anzahl der LEDs iswt konfigurierbar.
+Eine WS2812(xx), die Anzahl der LEDs ist konfigurierbar.
 
 ### Stromversorgung ###
 Der WS2812B-Strip zieht bei 30 LEDs ca 0.9A bei 5V, bei mehr LEDs natürlich analog mehr Strom.
@@ -33,6 +33,38 @@ Bei einer anderen, einfacheren Ausführung (mit `ESP 01-S`) hängen Microcontrol
 Generell sollten die verschiedenen Aufgabgen in eigenen Klassen versteckt sein.
 Da bei dem Arduino-IDE wird relativ viel forwarding betrieben, globals sind auch überall verfügbar.
 Das nutzt das Programm (unschöner weise) mehr oder weniger aus.
+
+### Libraries ###
+
+zum Betrieb sind einige externe Bibliotheken nötig:
+#### ezTime ####
+(by Rop Gonggrijp), aktuell: Version 0.7.10
+holt die Zeit von einem NTP-Server (Default pool.ntp.org).
+Kann auch Sommer-/Winterzeit, daher bessere Alternative als 
+#### Time, Timelib ####
+(by Michael Margolis), aktuell: 1.5.0
+Standard-Arduino Time, unterstützt NTP, aber leider kein DST
+
+#### EEPROM ####
+Persistieren der Konfiguration (und Weckzeiten..), siehe Klasse Speicher
+(by Ivan Grokhotkov), aktuell: Version 1.0.0
+
+#### ESP8266WiFi, ESP8266mDNS.h ####
+Wifi & Netzwerk
+(by Simon Peter,...) (built-in wenn ESP8266 Support installiert wird)
+
+#### ArduinoOTA, WiFiUdp ####
+(by Ivan Grokhotkov,...) aktuell: Version 1.0.0 (built-in)
+OTA Support
+
+#### Adafruit_NeoPixel ####
+Treiber für WS2812 - LEDs (by Adafruit), aktuell: Version 1.1.8
+
+#### FS ####
+Filesystem (SPIFS) für ESP8266 (built-in wenn ESP8266 Support installiert wird)
+
+#### ESP8266WebServer ####
+WebServer für ESP8266 (built-in wenn ESP8266 Support installiert wird)
 
 ### Klassen (Dateien) ###
 

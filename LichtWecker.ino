@@ -23,9 +23,6 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
 
-#include <Time.h>
-#include <TimeLib.h>
-
 #include "Zugangsinfo.h"
 
 // Globale Variablen starten immer mit __[a-z]
@@ -100,13 +97,13 @@ void setup() {
 
 void loop() {
 
-  if (millis() > MAX_UNSIGNED_LONG - 3600 * 1000UL) { // Zeit für einen Neustart
+  if (millis() > MAX_UNSIGNED_LONG - 12UL * 3600UL * 1000UL) { // Zeit für einen Neustart
     if (!__SA.Laeuft()) { // Nur Neustart, wenn grade kein Weckvorgang läuft
       ESP.restart();
     }
   }
 
-  time_t t = now(); // Zeit holen
+  time_t t = __NTP.now(); // Zeit holen
 
 #ifdef DEBUG_SERIAL
   // Nur noch für Testzwecke
@@ -175,6 +172,7 @@ void loop() {
   __SA.Tick();
   __OTA.Tick();
   __WebS.Tick();
+  __NTP.Tick();
 
   delay(20);
 }

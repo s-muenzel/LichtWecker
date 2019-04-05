@@ -341,7 +341,7 @@ void handleSetzeKonfig() {
 
 void handleStatus() {
   char temp[1000];
-  time_t t = now(); // Store the current time in time
+  time_t t = __NTP.now(); // Store the current time in time
   snprintf(temp, 1000,
            "{ \"Zeit\" : \"%2d:%02d:%02d\", \"ZeitStatus\" : %d, \"Aktiv\" : %d, \"Admin\" : %d}", hour(t), minute(t), second(t), timeStatus(), __SA.Laeuft(), __Admin_Mode_An);
   server.send(200, "application/json", temp);

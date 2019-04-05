@@ -1,4 +1,6 @@
 #include "NTP.h"
+
+#ifndef USE_EZ_TIME
 #include <WiFiUdp.h>
 
 IPAddress timeServer(192, 168, 2, 1); // die Fritzbox
@@ -62,13 +64,33 @@ void sendNTPpacket(IPAddress &address)
   Udp.endPacket();
 }
 
+#endif // ifndef USE_EZ_TIME
+
 NTP_Helfer::NTP_Helfer() {
 }
 
 void NTP_Helfer::Beginn() {
+#ifdef  USE_EZ_TIME
+  //  setServer(timeServer);
+  _TZ.setLocation("de");
+#else // ifdef USE_EZ_TIME
   Udp.begin(localPort);
   setSyncProvider(getNtpTime);
+#endif // ifndef USE_EZ_TIME
   D_PRINTLN(" Ntp-Service gestartet\n");
 }
 
+void NTP_Helfer::Tick() {
+#ifdef USE_EZ_TIME
+  events();
+#endif // ifdef USE_EZ_TIME
+}
+
+time_t NTP_Helfer::now() {
+#ifdef USE_EZ_TIME
+  return _TZ.now();
+#else // ifdef USE_EZ_TIME
+  return now();
+#endif // ifdef USE_EZ_TIME
+}
 
