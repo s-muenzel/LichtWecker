@@ -3,7 +3,7 @@
 
 // an welchem PIN hängt die Lichterkette
 //#define KETTE_PIN 14  // Sonoff Basic: GPIO 14
-#define KETTE_PIN   2  // Sonoff Basic von ITEAD, V2: GPIO 2
+#define KETTE_PIN   2  // Sonoff Basic von ITEAD, V2: GPIO 2, ESP01(S): GPIO 2
 #define RELAIS_PIN 12 // Sonoff Basic: GPIO 12
 
 
@@ -87,7 +87,6 @@ class Sonnenaufgang {
     float _konfig_nachleuchten;
     float _konfig_snooze;
     unsigned int   _konfig_relais;
-
     bool _status_Relais;
 };
 

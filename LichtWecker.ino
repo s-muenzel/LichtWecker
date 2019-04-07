@@ -5,6 +5,8 @@
 #include "OTA.h"
 #include "WebS.h"
 
+#define IST_SONOFF
+
 //#define DEBUG_SERIAL
 #ifdef DEBUG_SERIAL
 #define D_BEGIN(speed)   Serial.begin(speed)
@@ -91,6 +93,9 @@ void setup() {
   // OTA Initialisieren
   __OTA.Beginn();
   D_PRINT(" OTA vorbereitet");
+
+  // Beim ESP01S bleibt nach dem Reset ein Pixel an :-( ??
+  __SA.Stop();
 
   D_PRINTLN("Fertig");
 }

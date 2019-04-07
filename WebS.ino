@@ -147,6 +147,18 @@ void handleReset() {
   }
 }
 
+void handleAdmin() {
+  time_t t = now(); // Store the current time in time
+  D_PRINTF("Webaufruf /Admin um %2d:%2d:%2d\n", hour(t), minute(t), second(t));
+  if (!server.authenticate(admin_user, admin_pw)) {
+    server.requestAuthentication(DIGEST_AUTH, "Admin-Mode", "Admin Mode failed");
+  } else {
+    // User authorisiert, Admin_Mode anschalgen
+    __Admin_Mode_An = true;
+    server.send(200, "text/plain", "Admin-Mode eingeschaltet");
+  }
+}
+
 void handleSetzeWeckzeit() {
   time_t t = now(); // Store the current time in time
   D_PRINTF("Webaufruf /Setze_WZ um %2d:%2d:%2d\n", hour(t), minute(t), second(t));
@@ -487,6 +499,7 @@ void WebS::Beginn() {
   server.on("/Setze_Konfig",  handleSetzeKonfig);   // Speichert die neuen Weckzeiten ab
   server.on("/Start",         handleStart);         // nur noch zu Testzwecken - startet einen Sonnenaufgang
   server.on("/Reset",         handleReset);         // Neustart, nötig wenn z.B. Hostname geändert wurde oder Admin-Mode zurückgesetzt werden soll
+  server.on("/Admin",         handleAdmin);         // Admin-Mode einschalten (erforder Authentifizierung)
   server.on("/Dateien",       handleDateien);       // Datei-Operationen (upload, delete)
   server.on("/Loeschen",      handleLoeschen);      // Delete (spezifische Datei)
   server.on("/Hochladen", HTTP_POST, []() { //first callback is called after the request has ended with all parsed arguments
