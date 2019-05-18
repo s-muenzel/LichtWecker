@@ -1,3 +1,5 @@
+#include "LichtWecker.h"
+
 #include "OTA.h"
 #include <ArduinoOTA.h>
 #include <WiFiUdp.h>

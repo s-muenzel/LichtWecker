@@ -1,14 +1,8 @@
+#include "LichtWecker.h"
+
 #include "Sonnenaufgang.h"
 
 #include <Adafruit_NeoPixel.h>
-
-#ifdef IST_SONOFF
-#define LED_AN LOW
-#define LED_AUS HIGH
-#else
-#define LED_AN HIGH
-#define LED_AUS LOW
-#endif
 
 Adafruit_NeoPixel __strip = Adafruit_NeoPixel(NUM_LEDS, KETTE_PIN, NEO_GRB + NEO_KHZ800);
 
@@ -150,7 +144,9 @@ void Sonnenaufgang::Start() {
   _Dauer = round(_konfig_dauer * 1000);
   _Modus = aufgang;
   _Startzeit = millis();
+#ifndef IST_ESP01
   digitalWrite(LED_BUILTIN, LED_AN); // bei Sonoff Basic HIGH = OFF
+#endif // IST_ESP01
   D_PRINTF("Starte Sonnenaufgang bei %ld, Dauer %ld Nachlaufzeit %ld\n", _Startzeit, _Dauer, _Nachlaufzeit);
 }
 
@@ -169,7 +165,9 @@ void Sonnenaufgang::Stop() {
   }
   __strip.show();
   _Startzeit = 0;
+#ifndef IST_ESP01
   digitalWrite(LED_BUILTIN, LED_AUS); // bei Sonoff Basic HIGH = OFF
+#endif // IST_ESP01
 #ifdef IST_SONOFF
   digitalWrite(RELAIS_PIN, LOW); // Relais aus
   _status_Relais = false;
@@ -200,7 +198,9 @@ void Sonnenaufgang::Nachricht(Farb_t farbe, Dauer_t dauer, uint8_t prozent) {
   _Prozent = prozent;
   _Startzeit = millis();
   _Farbe = farbe;
+#ifndef IST_ESP01
   digitalWrite(LED_BUILTIN, LED_AN); // bei Sonoff Basic HIGH = OFF
+#endif // IST_ESP01
   D_PRINTF("Starte Nachricht bei %ld, Dauer %ld, Farbe #%d\n", _Startzeit, _Dauer, _Farbe);
 }
 bool Sonnenaufgang::Laeuft() {

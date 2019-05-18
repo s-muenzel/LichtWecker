@@ -1,3 +1,5 @@
+#include "LichtWecker.h"
+
 #include "NTP.h"
 
 #ifndef USE_EZ_TIME
@@ -93,4 +95,3 @@ time_t NTP_Helfer::now() {
   return now();
 #endif // ifdef USE_EZ_TIME
 }
-

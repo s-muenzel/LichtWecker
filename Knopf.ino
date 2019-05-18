@@ -1,14 +1,24 @@
+#include "LichtWecker.h"
+
 #include "Knopf.h"
+
+#ifdef IST_SONOFF
+#define KNOPFSTATUS digitalRead(KNOPF_PIN)
+#else // IST_SONOFF
+#define KNOPFSTATUS HIGH
+#endif // IST_SONOFF
 
 Knopf::Knopf() {
 }
 
 void Knopf::Beginn() {
+#ifdef IST_SONOFF
   pinMode(KNOPF_PIN, INPUT);
+#endif // IST_SONOFF
 }
 
 Knopf::_Event_t Knopf::Status() {
-  if (digitalRead(0) == HIGH) {
+  if (KNOPFSTATUS == HIGH) {
     // Knopf nicht gedrückt
     _Start = millis();
     _Kurz = false;

@@ -1,3 +1,5 @@
+#include "LichtWecker.h"
+
 #include "WebS.h"
 
 #include "Sonnenaufgang.h"
@@ -155,6 +157,7 @@ void handleAdmin() {
   } else {
     // User authorisiert, Admin_Mode anschalgen
     __Admin_Mode_An = true;
+    __OTA.Bereit();
     server.send(200, "text/plain", "Admin-Mode eingeschaltet");
   }
 }

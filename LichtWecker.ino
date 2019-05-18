@@ -1,3 +1,5 @@
+#include "LichtWecker.h"
+
 #include "Sonnenaufgang.h"
 #include "Knopf.h"
 #include "NTP.h"
@@ -5,9 +7,6 @@
 #include "OTA.h"
 #include "WebS.h"
 
-#define IST_SONOFF
-
-//#define DEBUG_SERIAL
 #ifdef DEBUG_SERIAL
 #define D_BEGIN(speed)   Serial.begin(speed)
 #define D_PRINT(...)     Serial.print(__VA_ARGS__)
@@ -45,9 +44,11 @@ void setup() {
   D_PRINT("Starte...");
 
   // die interne LED konfigurieren
+#ifndef IST_ESP01
   pinMode(LED_BUILTIN, OUTPUT);// bei Sonoff Basic Pin 13
-  digitalWrite(LED_BUILTIN, HIGH); // bei Sonoff Basic HIGH = OFF
+  digitalWrite(LED_BUILTIN, LED_AUS); // bei Sonoff Basic HIGH = OFF
   D_PRINT(" interne LED");
+#endif // IST_ESP01
 
   // EEPROM "Speicher" auslesen
   __WZ.Beginn();
@@ -94,6 +95,7 @@ void setup() {
   __OTA.Beginn();
   D_PRINT(" OTA vorbereitet");
 
+  delay(500);
   // Beim ESP01S bleibt nach dem Reset ein Pixel an :-( ??
   __SA.Stop();
 

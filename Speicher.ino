@@ -1,3 +1,5 @@
+#include "LichtWecker.h"
+
 #include "Speicher.h"
 #include <EEPROM.h>
 
@@ -148,4 +150,3 @@ void Speicher::setze_hostname(const char* n) {
   D_PRINTF("Hostname: %s (size: %d)\n", _hostname, sizeof(_hostname));
   EEPROM.put(POS_HOSTNAME, _hostname);
 }
-
