@@ -11,8 +11,13 @@
 # define LED_AN LOW
 # define LED_AUS HIGH
 #else
+# ifdef IST_ESP01
+#  define LED_AN LOW
+#  define LED_AUS HIGH
+# else
 #  define LED_AN HIGH
 #  define LED_AUS LOW
+# endif
 #endif
 
 #endif // _LICHTWECKER_H

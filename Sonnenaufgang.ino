@@ -165,9 +165,7 @@ void Sonnenaufgang::Stop() {
   }
   __strip.show();
   _Startzeit = 0;
-#ifndef IST_ESP01
   digitalWrite(LED_BUILTIN, LED_AUS); // bei Sonoff Basic HIGH = OFF
-#endif // IST_ESP01
 #ifdef IST_SONOFF
   digitalWrite(RELAIS_PIN, LOW); // Relais aus
   _status_Relais = false;
