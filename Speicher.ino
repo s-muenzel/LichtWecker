@@ -77,7 +77,10 @@ void Speicher::speichern() {
 bool Speicher::jetztWecken(time_t Jetzt) {
   if (Wecker_Aktiv()) {
     int _Tag = weekday(Jetzt) % 7;
-    return (hour(Jetzt) == hour(_WZ[_Tag])) && (minute(Jetzt) == minute(_WZ[_Tag])) && (second(Jetzt) == second(_WZ[_Tag]));
+    if(Wecker_An(_Tag)) {
+      return (hour(Jetzt) == hour(_WZ[_Tag])) && (minute(Jetzt) == minute(_WZ[_Tag])) && (second(Jetzt) == second(_WZ[_Tag]));
+    } else
+      return false;
   } else // Wecker ist inaktiv
     return false;
 }

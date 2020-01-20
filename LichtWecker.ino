@@ -104,7 +104,8 @@ void setup() {
 
 void loop() {
 
-  if (millis() > MAX_UNSIGNED_LONG - 12UL * 3600UL * 1000UL) { // Zeit für einen Neustart
+  if (millis() > 2100000000) { // alle ~24 Tage einen Neustart, damit millis() nicht überläuft
+    //MAX_UNSIGNED_LONG / 4) { // Zeit für einen Neustart
     if (!__SA.Laeuft()) { // Nur Neustart, wenn grade kein Weckvorgang läuft
       ESP.restart();
     }
