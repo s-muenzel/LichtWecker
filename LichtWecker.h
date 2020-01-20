@@ -3,8 +3,8 @@
 
 //#define DEBUG_SERIAL
 
-//#define IST_SONOFF
-#define IST_ESP01
+#define IST_SONOFF
+//#define IST_ESP01
 
 
 #ifdef IST_SONOFF
