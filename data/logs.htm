@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+<html>
+
+<head>
+    <meta charset='UTF-8'>
+    <meta http-equiv='refresh' content='5000'>
+    <title>Internal</title>
+</head>
+<script>
+    const LogListe_Start = '{"h":0,"list":[{"t":0,"s":0,"l":"-","m":"-"}]}';
+    const LogListe_Test = '{"h":123,"list":[{"t":0,"s":1,"l":"src/blblblbl.cpp:222","m":"Hier die Message"},{"t":120,"s":4,"l":"src/akjnsdfdfs.cpp:125","m":"Thats the error here"},{"t":245,"s":6,"l":"src/BattNetwork.cpp:543","m":"ALLES in Ordnung, Lange Message, SSEEHHRR LLAANNGGEE MEESSAAGE"}]}';
+    const severity = ["EMERG", "ALERT", "CRIT ", "ERR  ", "WARN ", "NOTE ", "INFO ", "DEBUG"];
+    var log_liste = JSON.parse(LogListe_Start);
+    var sev_filter = [true, true, true, true, true, true, true, true];
+    var my_hash = 0;
+    var ist_sichtbar = [true, true, true, true];
+    function zeige(n) {
+        if (ist_sichtbar[n]) {
+            c = document.getElementById('LogTabelle').getElementsByTagName('col')[n];
+            c.style.visibility = 'collapse';
+            //            c.style.display = 'none';
+            ist_sichtbar[n] = false;
+            //            document.getElementById(n).style.background = 'grey';
+        } else {
+            c = document.getElementById('LogTabelle').getElementsByTagName('col')[n];
+            c.style.visibility = '';
+            //            c.style.display = 'inline';
+            ist_sichtbar[n] = true;
+            //            document.getElementById(n).style.background = 'green';
+        }
+    }
+    function Select(n) {
+        sev_filter[n] = !sev_filter[n];
+        Update_List();
+    }
+    function onLoad() {
+        // Leere Tabelle anlegen
+        var tabelle = document.getElementById('LogTabelle');
+        for (var i = 0; i < 100; i++) {
+            let row = document.createElement("tr");
+            var tableData;
+            tableData = document.createElement("td");
+            tableData.className = "w3-right-align";
+            row.appendChild(tableData);
+            tableData = document.createElement("td");
+            tableData.className = "w3-center-align";
+            row.appendChild(tableData);
+            tableData = document.createElement("td");
+            tableData.className = "w3-left-align";
+            row.appendChild(tableData);
+            tableData = document.createElement("td");
+            tableData.className = "w3-left-align";
+            row.appendChild(tableData);
+            body = tabelle.tBodies[0];
+            body.appendChild(row);
+        }
+        meinSekundenTimer = setInterval(ladeStatus, 1000);
+    }
+    function Update_List() {
+        var tabelle = document.getElementById('LogTabelle');
+        let j = 0;
+        let max_t = 1;
+        for (let i = 0; i < log_liste.list.length; i++) {
+            if (log_liste.list[i].t > max_t) {
+                max_t = log_liste.list[i].t;
+            }
+        }
+        for (let i = 0; i < log_liste.list.length; i++) {
+            if (sev_filter[log_liste.list[i].s & 0x7]) {
+                let row = tabelle.rows[j + 1];
+                let prozent = 100 - ((log_liste.list[i].t * 100) / max_t);
+                row.cells[0].innerHTML = "<div class='w3-blue'><div class='w3-container w3-grey' style='width:" + prozent + "%'>" + log_liste.list[i].t + "</div></div>";
+                if ((log_liste.list[i].s & 0x7) == log_liste.list[i].s) {
+                    row.cells[1].textContent = severity[log_liste.list[i].s & 0x7];
+                } else {
+                    row.cells[1].textContent = severity[log_liste.list[i].s & 0x7] + "(" + (log_liste.list[i].s >> 3).toString(2) + ")";
+                }
+                row.cells[2].textContent = log_liste.list[i].l;
+                row.cells[3].textContent = log_liste.list[i].m;
+                j++;
+            }
+        }
+        for (i = j + 1; i < 100; i++) {
+            let row = tabelle.rows[i];
+            row.cells[0].textContent = "";
+            row.cells[1].textContent = "";
+            row.cells[2].textContent = "";
+            row.cells[3].textContent = "";
+        }
+    }
+    function ladeStatus() {
+        const xhttp = new XMLHttpRequest();
+        xhttp.onload = function () {
+            if (this.readyState == 4) {
+                if (this.status == 200) {
+                    log_liste = JSON.parse(this.responseText);
+                } else {
+                    updateStatuszeile("keine Verbindung");
+                    log_liste = JSON.parse(LogListe_Test);
+                }
+                if (log_liste.h != my_hash) {
+                    my_hash = log_liste.h;
+                    Update_List();
+                }
+            }
+        }
+        xhttp.open("GET", "/Logs");
+        xhttp.send();
+    }
+
+    function Menu_Open(m) {
+        document.getElementById(m).style.display = "block";
+    }
+
+    function Menu_Close(m) {
+        document.getElementById(m).style.display = "none";
+    }
+</script>
+
+<body onLoad="onLoad()">
+    <div class="w3-sidebar w3-bar-block w3-border-right" style="display:none" id="Spalten">
+        <button onclick="Menu_Close('Spalten')" class="w3-bar-item w3-small">Spalten &times;</button>
+        <div class="w3-bar-item"><input type="checkbox" checked="true" onChange="zeige(0)"><label>Zeit</label></div>
+        <div class="w3-bar-item"><input type="checkbox" checked="true" onChange="zeige(1)"><label>Severity</label></div>
+        <div class="w3-bar-item"><input type="checkbox" checked="true" onChange="zeige(2)"><label>Wo</label></div>
+        <div class="w3-bar-item"><input type="checkbox" checked="true" onChange="zeige(3)"><label>Was</label></div>
+    </div>
+    <div class="w3-sidebar w3-bar-block w3-border-right" style="display:none" id="Zeilen">
+        <button onclick="Menu_Close('Zeilen')" class="w3-bar-item w3-small">Zeilen &times;</button>
+        <div class="w3-bar-item"><input type="checkbox" checked="true" onChange="Select(0)"><label>Emergency</label>
+        </div>
+        <div class="w3-bar-item"><input type="checkbox" checked="true" onChange="Select(1)"><label>Alert</label></div>
+        <div class="w3-bar-item"><input type="checkbox" checked="true" onChange="Select(2)"><label>Critical</label>
+        </div>
+        <div class="w3-bar-item"><input type="checkbox" checked="true" onChange="Select(3)"><label>Error</label></div>
+        <div class="w3-bar-item"><input type="checkbox" checked="true" onChange="Select(4)"><label>Warning</label></div>
+        <div class="w3-bar-item"><input type="checkbox" checked="true" onChange="Select(5)"><label>Notice</label></div>
+        <div class="w3-bar-item"><input type="checkbox" checked="true" onChange="Select(6)"><label>Info</label></div>
+        <div class="w3-bar-item"><input type="checkbox" checked="true" onChange="Select(7)"><label>Debug</label></div>
+    </div>
+    <button class="w3-button w3-small" onclick="Menu_Open('Spalten')">Spalten☰</button>
+    <button class="w3-button w3-small" onclick="Menu_Open('Zeilen')">Zeilen☰</button>
+    <div class="w3-responsive">
+        <table id='LogTabelle' class="w3-table-all w3-bordered w3-striped w3-hoverable w3-small">
+            <col class='0' style="width:1em" />
+            <col class='1' style="width:1em" />
+            <col class='3' style="width:1em" />
+            <col class='4' style="width:80em" />
+            <thead>
+                <tr>
+                    <th class="w3-right-align">Zeit</th>
+                    <th class="w3-center-align">Sev.</th>
+                    <th class="w3-left-align">Wo</th>
+                    <th class="w3-left-align">Was</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</body>
+
+</html>

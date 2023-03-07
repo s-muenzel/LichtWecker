@@ -1,20 +1,23 @@
-#include "LichtWecker.h"
+#include <Arduino.h>
 
+#include "main.h"
 #include "Knopf.h"
 
 #ifdef IST_SONOFF
 #define KNOPFSTATUS digitalRead(KNOPF_PIN)
-#else // IST_SONOFF
+#else  // IST_SONOFF
 #define KNOPFSTATUS HIGH
-#endif // IST_SONOFF
+#endif  // IST_SONOFF
 
-Knopf::Knopf() {
-}
+#define KNOPF_PIN 0  // Sonoff Taster
+#define LANG 1500    // [ms] ab welcher Dauer zählt der Tastendruck als "lang"
+
+Knopf::Knopf() {}
 
 void Knopf::Beginn() {
 #ifdef IST_SONOFF
   pinMode(KNOPF_PIN, INPUT);
-#endif // IST_SONOFF
+#endif  // IST_SONOFF
 }
 
 Knopf::_Event_t Knopf::Status() {
@@ -39,6 +42,4 @@ Knopf::_Event_t Knopf::Status() {
   return nix;
 }
 
-int Knopf::WieLang() {
-  return _Lang;
-}
+int Knopf::WieLang() { return _Lang; }
