@@ -234,9 +234,9 @@ void handleKonfig() {
 <form action='/Start'><span><div class='Tag'>Starte jetzt</div></span><span><input type='submit' name='ok' value='ok'></span></form>\
 <form action='/Reset'><span><div class='Tag'>Neustart</div></span><span><input type='submit' name='ok' value='ok'></span></form>\
 </body></html>",
-        sp_p->lese_SA_laenge(), sp_p->lese_SA_v(), sp_p->lese_SA_dauer(),
-        sp_p->lese_SA_nachleuchten(), sp_p->lese_SA_snooze(),
-        sp_p->lese_SA_relais(), sp_p->lese_hostname());
+        sp_p->SA_laenge(), sp_p->SA_v(), sp_p->SA_dauer(),
+        sp_p->SA_nachleuchten(), sp_p->SA_snooze(),
+        sp_p->SA_relais(), sp_p->SA_hostname());
   } else {
     snprintf(
         temp, 2000,
@@ -250,18 +250,18 @@ void handleKonfig() {
 <div class='Tag'>Schaltdauer Relais:<span class='Rechts'>%4u ms</span></div>\
 <div class='Tag'>Hostname:<span class='Rechts'>%s</span></div>\
 </span><span></span></body></html>",
-        sp_p->lese_SA_laenge(), sp_p->lese_SA_v(), sp_p->lese_SA_dauer(),
-        sp_p->lese_SA_nachleuchten(), sp_p->lese_SA_snooze(),
-        sp_p->lese_SA_relais(), sp_p->lese_hostname());
+        sp_p->SA_laenge(), sp_p->SA_v(), sp_p->SA_dauer(),
+        sp_p->SA_nachleuchten(), sp_p->SA_snooze(),
+        sp_p->SA_relais(), sp_p->SA_hostname());
   }
   // char temp2[1300];
   // File f =
   //     LittleFS.open(__Admin_Mode_An ? "/Konf_Adm.temp" : "/Konf_noA.temp",
   //     "r");//  f.read((uint8_t *)temp2, 1299);
-  //  snprintf(temp, 2000, temp2, sp_p->lese_SA_laenge(), sp_p->lese_SA_v(),
-  //  sp_p->lese_SA_dauer(), sp_p->lese_SA_nachleuchten(),
-  //  sp_p->lese_SA_snooze(), sp_p->lese_SA_relais(),
-  //  sp_p->lese_hostname());
+  //  snprintf(temp, 2000, temp2, sp_p->SA_laenge(), sp_p->SA_v(),
+  //  sp_p->SA_dauer(), sp_p->SA_nachleuchten(),
+  //  sp_p->SA_snooze(), sp_p->SA_relais(),
+  //  sp_p->SA_hostname());
   server.send(200, "text/html", temp);
 }
 
@@ -272,37 +272,31 @@ void handleSetzeKonfig() {
       if (server.argName(i) == "L") {
         float f = server.arg(i).toFloat();
         D_PRINTF(LOG_DEBUG, "Konfig: Laenge: %f", f);
-        sp_p->setze_SA_laenge(f);
-        sa_p->Setze_Laenge(f);
+        sp_p->SA_laenge(f);
       } else if (server.argName(i) == "V") {
         float f = server.arg(i).toFloat();
         D_PRINTF(LOG_DEBUG, "Konfig: V: %f", f);
-        sp_p->setze_SA_v(f);
-        sa_p->Setze_v(f);
+        sp_p->SA_v(f);
       } else if (server.argName(i) == "D") {
         float f = server.arg(i).toFloat();
         D_PRINTF(LOG_DEBUG, "Konfig: Dauer: %f", f);
-        sp_p->setze_SA_dauer(f);
-        sa_p->Setze_Dauer(f);
+        sp_p->SA_dauer(f);
       } else if (server.argName(i) == "N") {
         float f = server.arg(i).toFloat();
         D_PRINTF(LOG_DEBUG, "Konfig: Nachleuchten: %f", f);
-        sp_p->setze_SA_nachleuchten(f);
-        sa_p->Setze_Nachleuchten(f);
+        sp_p->SA_nachleuchten(f);
       } else if (server.argName(i) == "S") {
         float f = server.arg(i).toFloat();
         D_PRINTF(LOG_DEBUG, "Konfig: Snooze: %f", f);
-        sp_p->setze_SA_snooze(f);
-        sa_p->Setze_Snooze(f);
+        sp_p->SA_snooze(f);
       } else if (server.argName(i) == "R") {
         unsigned int n = server.arg(i).toInt();
         if (n > 5000) n = 100;
         D_PRINTF(LOG_DEBUG, "Konfig: Relais: %d", n);
-        sp_p->setze_SA_relais(n);
-        sa_p->Setze_Relais(n);
+        sp_p->SA_relais(n);
       } else if (server.argName(i) == "H") {
         D_PRINTF(LOG_DEBUG, "Konfig: Hostname: %s", server.arg(i).c_str());
-        sp_p->setze_hostname(server.arg(i).c_str());
+        sp_p->SA_hostname(server.arg(i).c_str());
       }
     }
     sp_p->speichern();
@@ -316,7 +310,7 @@ void handleSetzeKonfig() {
 
 void handleStatus() {
   char temp[1000];
-  time_t t = ntp_p->now();  // Store the current time in time
+  time_t t = ntp_p->Jetzt();  // Store the current time in time
   snprintf(temp, 1000,
            "{ \"Zeit\" : \"%2d:%02d:%02d\", \"ZeitStatus\" : %d, \"Aktiv\" : "
            "%d, \"Admin\" : %d}",

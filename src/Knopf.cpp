@@ -23,18 +23,18 @@ void Knopf::Beginn() {
 Knopf::_Event_t Knopf::Status() {
   if (KNOPFSTATUS == HIGH) {
     // Knopf nicht gedrückt
-    _Start = millis();
-    _Kurz = false;
-    _Lang = 0;
+    _start = millis();
+    _kurz = false;
+    _lang = 0;
   } else {
     // Knopf gedrückt
-    if (!_Kurz) {
-      _Kurz = true;
+    if (!_kurz) {
+      _kurz = true;
       return kurz;
     }
-    int anzahl_Langs = (millis() - _Start) / LANG;
-    if (anzahl_Langs > _Lang) {
-      _Lang = anzahl_Langs;
+    int anzahl_langs = (millis() - _start) / LANG;
+    if (anzahl_langs > _lang) {
+      _lang = anzahl_langs;
       return lang;
     }
     return nix;
@@ -42,4 +42,4 @@ Knopf::_Event_t Knopf::Status() {
   return nix;
 }
 
-int Knopf::WieLang() { return _Lang; }
+int Knopf::WieLang() { return _lang; }

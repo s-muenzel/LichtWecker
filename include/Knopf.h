@@ -12,9 +12,9 @@ class Knopf {
   int WieLang();
 
  private:
-  long _Start;  // [ms] - wann wurde der Knopf gedrückt
-  bool _Kurz;   // wurde ein kurz bereits gemeldet?
-  int _Lang;    // bei _Lang wird mitgezählt
+  long _start;  // [ms] - wann wurde der Knopf gedrückt
+  bool _kurz;   // wurde ein kurz bereits gemeldet?
+  int _lang;    // bei _lang wird mitgezählt
 };
 
 #endif  // _KNOPF

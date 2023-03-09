@@ -36,21 +36,15 @@ void setup() {
 #endif  // IST_ESP01
 
   // EEPROM "Speicher" auslesen
-  __WZ.Beginn();
+  __WZ.Beginn(&__NTP);
   D_PRINTF(LOG_DEBUG, " gespeicherte Werte ok");
 
   // Sonnenaufgang Objekt initialisieren
   __SA.Beginn(&__WZ);
-  __SA.Setze_Laenge(__WZ.lese_SA_laenge());
-  __SA.Setze_v(__WZ.lese_SA_v());
-  __SA.Setze_Dauer(__WZ.lese_SA_dauer());
-  __SA.Setze_Nachleuchten(__WZ.lese_SA_nachleuchten());
-  __SA.Setze_Snooze(__WZ.lese_SA_snooze());
-  __SA.Setze_Relais(__WZ.lese_SA_relais());
   D_PRINTF(LOG_DEBUG, " SA_Objekt");
 
   // Wifi
-  WiFi.hostname(__WZ.lese_hostname());
+  WiFi.hostname(__WZ.SA_hostname());
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
   while (WiFi.waitForConnectResult() != WL_CONNECTED) {
@@ -61,7 +55,7 @@ void setup() {
   D_PRINTF(LOG_DEBUG, " Wifi %s (IP Address %s)", ssid,
            WiFi.localIP().toString().c_str());
 
-  if (MDNS.begin(__WZ.lese_hostname())) {
+  if (MDNS.begin(__WZ.SA_hostname())) {
     D_PRINTF(LOG_DEBUG, " MDNS responder");
   }
 
@@ -99,7 +93,7 @@ void loop() {
     }
   }
 
-  time_t t = __NTP.now();  // Zeit holen
+  time_t t = __NTP.Jetzt();  // Zeit holen
 
   switch (__Knopf.Status()) {
     case Knopf::nix:

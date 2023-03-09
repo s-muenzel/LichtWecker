@@ -14,13 +14,14 @@
 
 // Meine LED-Kette ist 1m mit 30 LEDs
 #define NUM_LEDS 30
-#define LAENGE 1.0f           // [m] Länge des LED-Strips
-#define GESCHWINDIGKEIT 0.1f  // [m/s] Ausbreitungsgeschwindigkeit v
-#define DAUER 20.0f           // [s] wie lange dauert der "Sonnenaufgang"
-#define NACHLEUCHTEN 2.0f     // [s] Nach Max. weiterleuchten
-#define SNOOZE 5.f            // [s] wie lange pausiert  ein Snooze
-#define BLINKDAUER 0.5f       // [s] wie lange dauert ein Blink (Nachricht)
-#define RELAIS 100            // [ms] Zeit bis Netzteil sicher 5V liefert
+// Gute Default-Werte
+// #define LAENGE 1.0f           // [m] Länge des LED-Strips
+// #define GESCHWINDIGKEIT 0.1f  // [m/s] Ausbreitungsgeschwindigkeit v
+// #define DAUER 20.0f           // [s] wie lange dauert der "Sonnenaufgang"
+// #define NACHLEUCHTEN 10.0f    // [s] Nach Max. weiterleuchten
+// #define SNOOZE 30.f           // [s] wie lange pausiert  ein Snooze
+// #define RELAIS 100            // [ms] Zeit bis Netzteil sicher 5V liefert
+#define BLINKDAUER 0.5f  // [s] wie lange dauert ein Blink (Nachricht)
 
 // Uart1: GPIO 2 (TX von Serial1)
 NeoPixelBus<NeoGrbFeature, NeoEsp8266Uart1800KbpsMethod> __strip(NUM_LEDS,
@@ -37,7 +38,7 @@ RgbColor Sonnenaufgang::Lichtfarbe(float t, float x) {
   //  ___/
   //
   // x ausserhalb der Wert macht keine Sinn
-  float _x = max(0.0f, min(_konfig_laenge, x));
+  float _x = max(0.0f, min(_speicher->SA_laenge(), x));
   // wenn von der Mitte angefangen werden soll
   /*
     float _x_prime = (2.0 * _x - _konfig_laenge) / _konfig_v;
@@ -47,10 +48,10 @@ RgbColor Sonnenaufgang::Lichtfarbe(float t, float x) {
   /*
     float _x_prime = _x / _konfig_v; */
   // Wenn vom Ende angefangen werden soll
-  float _x_prime = (_konfig_laenge - _x) / _konfig_v;
+  float _x_prime = (_speicher->SA_laenge() - _x) / _speicher->SA_v();
   float _t_x = t - _x_prime;
-  _t_x = max(0.0f, min(_konfig_dauer, _t_x));
-  _t_x /= _konfig_dauer;
+  _t_x = max(0.0f, min(_speicher->SA_dauer(), _t_x));
+  _t_x /= _speicher->SA_dauer();
 
   float _h;
   if (_t_x < 0.9)
@@ -67,17 +68,11 @@ RgbColor Sonnenaufgang::Lichtfarbe(float t, float x) {
 }
 
 Sonnenaufgang::Sonnenaufgang() {
-  _konfig_laenge = LAENGE;
-  _konfig_v = GESCHWINDIGKEIT;
-  _konfig_dauer = DAUER;
-  _konfig_nachleuchten = NACHLEUCHTEN;
-  _konfig_snooze = SNOOZE;
 #ifdef IST_SONOFF
-  _konfig_relais = RELAIS;
   pinMode(RELAIS_PIN, OUTPUT);
 #endif  // IST_SONOFF
-  _Modus = nix;
-  _Startzeit = 0;
+  _modus = nix;
+  _startzeit = 0;
 }
 
 void Sonnenaufgang::Beginn(Speicher *sp) {
@@ -88,81 +83,81 @@ void Sonnenaufgang::Beginn(Speicher *sp) {
 #ifdef IST_SONOFF
   D_PRINTF(LOG_DEBUG, "RELAIS AUS");
   digitalWrite(RELAIS_PIN, LOW);
-  _status_Relais = false;
+  _status_relais = false;
 #endif  // IST_SONOFF
 }
 
 bool Sonnenaufgang::Snooze() {
-  if (_Startzeit == 0)
+  if (_startzeit == 0)
     return false;  // es läuft kein Aufgang, als kein Snooze..
   // Snooze bricht den Vorgang nicht ab sondern schiebt ihn nach vorne.
   // Dann ist "Lichtfarbe" erstmal "0,0,0"
-  _Startzeit = millis() + round(_konfig_snooze * 1000);
+  _startzeit = millis() + round(_speicher->SA_snooze() * 1000);
   return true;
 }
 
 void Sonnenaufgang::Stop() {
   D_PRINTF(LOG_DEBUG, "Stoppe Sonnenaufgang bei %lu (nach %ld)", millis(),
-           (long)(millis() - _Startzeit));
-  // Stop löscht das Licht und setzt _Startzeit wieder auf 0
+           (long)(millis() - _startzeit));
+  // Stop löscht das Licht und setzt _startzeit wieder auf 0
   for (uint16_t _n = 0; _n < __strip.PixelCount(); _n++) {
     __strip.SetPixelColor(_n, RgbColor(0));
   }
   __strip.Show();
-  _Startzeit = 0;
-  _Modus = nix;
+  _startzeit = 0;
+  _modus = nix;
   digitalWrite(LED_BUILTIN, LED_AUS);  // bei Sonoff Basic HIGH = OFF
 #ifdef IST_SONOFF
   digitalWrite(RELAIS_PIN, LOW);  // Relais aus
-  _status_Relais = false;
+  _status_relais = false;
 #endif  // IST_SONOFF
 }
 
 void Sonnenaufgang::Nachricht(Modus_t modus) {
   // immer zuerst sicherstellen, dass das Relais an ist
 #ifdef IST_SONOFF
-  if (!_status_Relais) {
+  if (!_status_relais) {
     D_PRINTF(LOG_DEBUG, "RELAIS AN");
     digitalWrite(RELAIS_PIN, HIGH);
-    delay(_konfig_relais);  // mal kurz warten, damit das Relais auch sicher
-                            // angezogen hat
-    _status_Relais = true;
+    delay(_speicher->SA_relais());  // mal kurz warten, damit das Relais auch
+                                    // sicher angezogen hat
+    _status_relais = true;
   }
 #endif  // IST_SONOFF
-  _Modus = modus;
-  _Startzeit = millis();
-  switch (_Modus) {
+  _modus = modus;
+  _startzeit = millis();
+  switch (_modus) {
     case aufgang:
-      _Nachlaufzeit = round(_konfig_nachleuchten * 1000);
-      _Dauer = round(_konfig_dauer * 1000);
+      _nachlaufzeit = round(_speicher->SA_nachleuchten() * 1000);
+      _dauer = round(_speicher->SA_dauer() * 1000);
       break;
     case weckzeit:
     case weck_abbruch:
     case wecker_aus:
     case wecker_an:
     case ota_ein:
-      _Nachlaufzeit = 0;
-      _Dauer = round(3 * BLINKDAUER * 1000);
+      _nachlaufzeit = 0;
+      _dauer = round(3 * BLINKDAUER * 1000);
       break;
     default:
-      _Dauer = 0;
-      _Nachlaufzeit = 0;
+      _dauer = 0;
+      _nachlaufzeit = 0;
       Stop();
       break;
   }
 #ifndef IST_ESP01
   digitalWrite(LED_BUILTIN, LED_AN);  // bei Sonoff Basic HIGH = OFF
 #endif                                // IST_ESP01
-  D_PRINTF(LOG_DEBUG, "Starte Nachricht Typ %d bei %ld", _Modus, _Startzeit);
+  D_PRINTF(LOG_DEBUG, "Starte Nachricht Typ %d bei %ld", _modus, _startzeit);
 }
 
-bool Sonnenaufgang::Laeuft() { return _Startzeit > 0; }
+bool Sonnenaufgang::Laeuft() { return _startzeit > 0; }
 
 void Sonnenaufgang::Tick() {
   // Sollte ein Sonnenaufgang laufen, das Licht entsprechend anpassen..
-  if (_Startzeit > 0) {
-    long _ms = millis() - _Startzeit;
-    switch (_Modus) {
+  if (_startzeit > 0) {
+    long _ms = millis() - _startzeit;
+    switch (_modus) {
       case aufgang:
         Tick_Aufgang(_ms);
         break;
@@ -170,16 +165,16 @@ void Sonnenaufgang::Tick() {
         Tick_Weckzeit(_ms);
         break;
       case weck_abbruch:
-        Tick_Farbe(_ms,RgbColor(255, 255, 0));
+        Tick_Farbe(_ms, RgbColor(255, 255, 0));
         break;
       case wecker_aus:
-        Tick_Farbe(_ms,RgbColor(255, 0, 0));
+        Tick_Farbe(_ms, RgbColor(255, 0, 0));
         break;
       case wecker_an:
-        Tick_Farbe(_ms,RgbColor(0, 255, 0));
+        Tick_Farbe(_ms, RgbColor(0, 255, 0));
         break;
       case ota_ein:
-        Tick_Farbe(_ms,RgbColor(255, 0, 255));
+        Tick_Farbe(_ms, RgbColor(255, 0, 255));
         break;
 
       default:
@@ -187,21 +182,21 @@ void Sonnenaufgang::Tick() {
     }
   } else {
 #ifdef IST_SONOFF
-    if (_status_Relais) {
+    if (_status_relais) {
       D_PRINTF(LOG_DEBUG, "RELAIS AUS");
       digitalWrite(RELAIS_PIN, LOW);
-      _status_Relais = false;
+      _status_relais = false;
     }
 #endif  // IST_SONOFF
   }
 }
 
 void Sonnenaufgang::Tick_Aufgang(long ms) {
-  if (ms > _Dauer + _Nachlaufzeit) {
+  if (ms > _dauer + _nachlaufzeit) {
     Stop();
   } else {
     for (uint16_t _n = 0; _n < __strip.PixelCount(); _n++) {
-      float _x = (float)_n * _konfig_laenge / __strip.PixelCount();
+      float _x = (float)_n * _speicher->SA_laenge() / __strip.PixelCount();
       __strip.SetPixelColor(_n, Lichtfarbe(ms / 1000., _x));
     }
     __strip.Show();
@@ -282,7 +277,7 @@ void Sonnenaufgang::Tick_Weckzeit(long ms) {
 }
 
 void Sonnenaufgang::Tick_Farbe(long ms, RgbColor f) {
-  if (ms > _Dauer) {
+  if (ms > _dauer) {
     Stop();
   } else {
     uint8_t numP = __strip.PixelCount();

@@ -13,7 +13,7 @@
 bool ota_laeuft;
 
 OTA::OTA() {
-  _OTA_An = false;
+  _ota_An = false;
   ota_laeuft = false;
 }
 
@@ -24,7 +24,7 @@ void OTA::Beginn(Speicher *Sp, Sonnenaufgang *Sa) {
   // ArduinoOTA.setPort(8266);
   // Hostname defaults to esp8266-[ChipID]
   ArduinoOTA.setHostname(
-      Sp->lese_hostname());  // überschreibt wohl den Aufruf von MDNS.begin()
+      Sp->SA_hostname());  // überschreibt wohl den Aufruf von MDNS.begin()
   // No authentication by default
   //  ArduinoOTA.setPassword("...");
   // Password can be set with it's md5 value as well
@@ -59,12 +59,12 @@ void OTA::Beginn(Speicher *Sp, Sonnenaufgang *Sa) {
 }
 
 void OTA::Bereit() {
-  _OTA_An = true;
+  _ota_An = true;
   ArduinoOTA.begin();
 };
 
 bool OTA::Tick() {
-  if (_OTA_An) {
+  if (_ota_An) {
     ArduinoOTA.handle();
   }
   return ota_laeuft;

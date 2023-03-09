@@ -14,7 +14,7 @@ class OTA {
   bool Tick();
 
  private:
-  bool _OTA_An;  // Wurde OTA schon "angeschltet"
+  bool _ota_An;  // Wurde OTA schon "angeschltet"
 };
 
 #endif  // _OTA
